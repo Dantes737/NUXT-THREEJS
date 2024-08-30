@@ -8,7 +8,7 @@ const navigation = [
 </script>
 
 <template>
-  <div>
+  <div class="bg-gray-900 h-dvh">
     <header class="bg-indigo-950/90 sticky top-0 z-50">
       <nav
         class="mx-auto flex flex-row max-w-7xl items-center justify-between px-6 py-3 lg:px-8"
