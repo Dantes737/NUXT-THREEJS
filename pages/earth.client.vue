@@ -7,23 +7,31 @@ const fov = 75;
 const near = 0.5;
 const far = 1000;
 
+const delta = 0.0006;
+let moonAngleRadians = 0;
+
 const scene = new THREE.Scene();
 const loader = new THREE.TextureLoader();
 const sunLight = new THREE.DirectionalLight("#FFFFFF");
 sunLight.position.set(-2, 0.5, 1.5);
 
 const geo = new THREE.IcosahedronGeometry(1, 12);
+const moonGeo = new THREE.IcosahedronGeometry(0.3, 12);
 
 const mat = new THREE.MeshStandardMaterial({
-  map: loader.load("/img/earth/base.jpg"),
+  map: loader.load("/img/planets/base.jpg"),
+});
+
+const moonMat = new THREE.MeshStandardMaterial({
+  map: loader.load("/img/planets/moon.jpg"),
 });
 
 const cloudsMat = new THREE.MeshStandardMaterial({
-  map: loader.load("/img/earth/04_earthcloudmap.jpg"),
+  map: loader.load("/img/planets/04_earthcloudmap.jpg"),
   transparent: true,
   opacity: 0.9,
   blending: THREE.AdditiveBlending,
-  alphaMap: loader.load("/img/earth/05_earthcloudmaptrans.jpg"),
+  alphaMap: loader.load("/img/planets/05_earthcloudmaptrans.jpg"),
   // alphaTest: 0.3,
 });
 
@@ -31,6 +39,9 @@ const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 
 const EARTH_MESH = new THREE.Mesh(geo, mat);
+
+const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+moonMesh.position.set(2.5, 0.2, 0);
 
 const cloudsMesh = new THREE.Mesh(geo, cloudsMat);
 cloudsMesh.scale.setScalar(1.003);
@@ -59,6 +70,8 @@ onMounted(() => {
   earthGroup.add(EARTH_MESH);
   earthGroup.add(cloudsMesh);
 
+  scene.add(moonMesh);
+
   scene.add(sunLight);
 
   function animate() {
@@ -66,6 +79,12 @@ onMounted(() => {
 
     EARTH_MESH.rotation.y += 0.001;
     cloudsMesh.rotation.y += 0.002;
+
+    moonAngleRadians += delta;
+    moonAngleRadians %= 2 * Math.PI;
+
+    moonMesh.position.x = 2.5 * Math.cos(moonAngleRadians);
+    moonMesh.position.z = 2.5 * Math.sin(moonAngleRadians);
 
     renderer.render(scene, camera);
     controls.update();
