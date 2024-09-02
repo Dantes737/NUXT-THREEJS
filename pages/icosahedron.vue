@@ -1,5 +1,6 @@
 <script setup>
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const container = ref(null);
 const fov = 75;
@@ -9,7 +10,7 @@ const far = 10;
 const scene = new THREE.Scene();
 const hemiLight = new THREE.HemisphereLight("#FFFFFF", "#000000");
 
-const geo = new THREE.IcosahedronGeometry(1.0, 2);
+const geo = new THREE.IcosahedronGeometry(1, 2);
 
 const mat = new THREE.MeshStandardMaterial({
   color: "#50C878",
@@ -23,6 +24,7 @@ const wireMat = new THREE.MeshBasicMaterial({
 
 const mesh = new THREE.Mesh(geo, mat);
 const wireMesh = new THREE.Mesh(geo, wireMat);
+wireMesh.scale.setScalar(1.001);
 
 onMounted(() => {
   const width = window.innerWidth;
@@ -34,6 +36,10 @@ onMounted(() => {
 
   const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.z = 2;
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.03;
 
   container.value.appendChild(renderer.domElement);
 
@@ -49,10 +55,11 @@ onMounted(() => {
     wireMesh.rotation.y = t * 0.0001;
 
     renderer.render(scene, camera);
+    controls.update();
   }
 
   animate();
 });
 </script>
 
-<template><div ref="container"></div></template>
+<template><div ref="container" /></template>
