@@ -12,11 +12,15 @@ let moonAngleRadians = 0;
 
 const scene = new THREE.Scene();
 const loader = new THREE.TextureLoader();
-const sunLight = new THREE.DirectionalLight("#FFFFFF");
-sunLight.position.set(-2, 0.5, 1.5);
+
+const sunLight = new THREE.SpotLight("#FFFFFF", 7, 10, Math.PI / 4.5);
+sunLight.castShadow = true;
+sunLight.position.set(-5, 0.5, 1.5);
+
+// const lightHelper = new THREE.SpotLightHelper(sunLight);
 
 const geo = new THREE.IcosahedronGeometry(1, 12);
-const moonGeo = new THREE.IcosahedronGeometry(0.3, 12);
+const moonGeo = new THREE.IcosahedronGeometry(0.25, 12);
 
 const mat = new THREE.MeshStandardMaterial({
   map: loader.load("/img/planets/base.jpg"),
@@ -39,8 +43,12 @@ const earthGroup = new THREE.Group();
 earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
 
 const EARTH_MESH = new THREE.Mesh(geo, mat);
+EARTH_MESH.castShadow = true;
+EARTH_MESH.receiveShadow = true;
 
 const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+moonMesh.receiveShadow = true;
+moonMesh.castShadow = true;
 moonMesh.position.set(2.5, 0.2, 0);
 
 const cloudsMesh = new THREE.Mesh(geo, cloudsMat);
@@ -52,6 +60,7 @@ onMounted(() => {
   const aspect = width / height;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.shadowMap.enabled = true;
   renderer.setSize(width, height);
 
   const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
@@ -73,6 +82,7 @@ onMounted(() => {
   scene.add(moonMesh);
 
   scene.add(sunLight);
+  // scene.add(lightHelper);
 
   function animate() {
     requestAnimationFrame(animate);
