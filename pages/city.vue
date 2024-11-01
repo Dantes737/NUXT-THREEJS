@@ -1,21 +1,18 @@
 <script setup>
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { JoltPhysics } from "three/addons/physics/JoltPhysics.js";
 
-import { MapControls } from "three/addons/controls/MapControls.js";
-
-let camera, controls, scene, renderer;
 const container = ref(null);
+let camera, scene, renderer;
+let physics, position;
+let boxes, spheres;
 
-function init() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xcccccc);
-  scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
+async function init() {
+  physics = await JoltPhysics();
+  position = new THREE.Vector3();
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  container.value.appendChild(renderer.domElement);
+  //
 
   camera = new THREE.PerspectiveCamera(
     60,
@@ -23,87 +20,111 @@ function init() {
     1,
     1000
   );
-  camera.position.set(0, 200, -400);
+  camera.position.set(-1, 1.5, 2);
+  camera.lookAt(0, 0.5, 0);
 
-  // = = = = controls = = = = =
-  controls = new MapControls(camera, renderer.domElement);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x666666);
 
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
+  const hemiLight = new THREE.HemisphereLight();
+  scene.add(hemiLight);
 
-  controls.screenSpacePanning = false;
+  const dirLight = new THREE.DirectionalLight(0xffffff, 3);
+  dirLight.position.set(5, 5, 5);
+  dirLight.castShadow = true;
+  dirLight.shadow.camera.zoom = 2;
+  scene.add(dirLight);
 
-  controls.minDistance = 100;
-  controls.maxDistance = 500;
-
-  controls.maxPolarAngle = Math.PI / 2;
-
-  // world
-  const groundGeo = new THREE.PlaneGeometry(1700, 1700);
-  const groundMat = new THREE.MeshPhongMaterial({
-    color: "gray",
-  });
-
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-
-  scene.add(ground);
-
-  const geometry = new THREE.BoxGeometry();
-  geometry.translate(0, 0.5, 0);
-  const material = new THREE.MeshPhongMaterial({
-    color: 0xeeeeee,
-    flatShading: true,
-  });
-
-  for (let i = 0; i < 400; i++) {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.position.x = Math.random() * 1600 - 800;
-    mesh.position.y = 0;
-    mesh.position.z = Math.random() * 1600 - 800;
-    mesh.scale.x = 20;
-    mesh.scale.y = Math.random() * 80 + 10;
-    mesh.scale.z = 20;
-    mesh.updateMatrix();
-    mesh.matrixAutoUpdate = false;
-    scene.add(mesh);
-  }
-
-  // lights
-
-  const dirLight1 = new THREE.DirectionalLight(0xffffff, 8);
-  dirLight1.position.set(2, 8, 4);
-  dirLight1.castShadow = true;
-  scene.add(dirLight1);
-
-  const ambientLight = new THREE.AmbientLight(0x555555);
-  scene.add(ambientLight);
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(10, 5, 10),
+    new THREE.ShadowMaterial({ color: 0x444444 })
+  );
+  floor.position.y = -2.5;
+  floor.receiveShadow = true;
+  floor.userData.physics = { mass: 0 };
+  scene.add(floor);
 
   //
 
-  window.addEventListener("resize", onWindowResize);
-}
+  const material = new THREE.MeshLambertMaterial();
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  const matrix = new THREE.Matrix4();
+  const color = new THREE.Color();
 
+  // Boxes
+
+  const geometryBox = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+  boxes = new THREE.Mesh(geometryBox, material);
+  boxes.castShadow = true;
+  boxes.receiveShadow = true;
+  boxes.userData.physics = { mass: 1 };
+  scene.add(boxes);
+
+  // Spheres
+
+  const geometrySphere = new THREE.IcosahedronGeometry(0.05, 4);
+  spheres = new THREE.InstancedMesh(geometrySphere, material, 400);
+  spheres.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // will be updated every frame
+  spheres.castShadow = true;
+  spheres.receiveShadow = true;
+  spheres.userData.physics = { mass: 1 };
+  scene.add(spheres);
+
+  for (let i = 0; i < spheres.count; i++) {
+    matrix.setPosition(
+      Math.random() - 0.5,
+      Math.random() * 2,
+      Math.random() - 0.5
+    );
+    spheres.setMatrixAt(i, matrix);
+    spheres.setColorAt(i, color.setHex(0xffffff * Math.random()));
+  }
+
+  physics.addScene(scene);
+
+  //
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setAnimationLoop(animate);
+  renderer.shadowMap.enabled = true;
+  container.value.appendChild(renderer.domElement);
+
+  //
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.y = 0.5;
+  controls.update();
+
+  setInterval(() => {
+    let index = Math.floor(Math.random() * spheres.count);
+
+    position.set(0, Math.random() + 1, 0);
+    physics.setMeshPosition(spheres, position, index);
+  }, 200);
+
+  // setInterval(() => {
+  //   let index = Math.floor(Math.random() * boxes.count);
+
+  //   position.set(0, Math.random() + 1, 0);
+  //   physics.setMeshPosition(boxes, position, index);
+
+  //   //
+
+  //   index = Math.floor(Math.random() * spheres.count);
+
+  //   position.set(0, Math.random() + 1, 0);
+  //   physics.setMeshPosition(spheres, position, index);
+  // }, 500);
 }
 
-function animate(t = 0) {
-  requestAnimationFrame(animate);
-
+function animate() {
   renderer.render(scene, camera);
-  controls.update();
 }
 
 onMounted(async () => {
-  init();
+  await init();
   animate();
 });
 </script>
