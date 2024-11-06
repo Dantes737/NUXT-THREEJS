@@ -3,7 +3,6 @@ import { ref } from "vue";
 
 const navigation = [
   { name: "Home", href: "/" },
-  { name: "Test Shape", href: "/icosahedron" },
   { name: "Earth", href: "/earth" },
   { name: "Three City", href: "/city" },
 ];

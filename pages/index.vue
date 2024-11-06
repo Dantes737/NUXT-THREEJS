@@ -57,41 +57,25 @@
         "
       />
     </div>
-    <div class="mx-auto max-w-7xl pb-24 pt-10 sm:pb-32 lg:flex lg:py-40">
-      <div class="mx-auto max-w-2xl flex-shrink-0 lg:mx-0 lg:max-w-xl lg:pt-8">
+    <div
+      class="flex flex-col lg:flex-row justify-center items-center gap-5 content-center pt-5"
+    >
+      <div class="mx-auto max-w-2xl lg:mx-0 lg:max-w-xl lg:pt-8 px-4">
         <h1
           class="mt-10 text-4xl font-bold tracking-tight text-white sm:text-6xl"
         >
-          Deploy to the cloud with confidence
+          Trying to do magic with
+          <span class="text-cyan-600">THREE JS</span> and
+          <span class="text-emerald-600">NUXT JS</span>
         </h1>
         <p class="mt-6 text-lg leading-8 text-gray-300">
           Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem
           cupidatat commodo. Elit sunt amet fugiat veniam occaecat fugiat
           aliqua.
         </p>
-        <div class="mt-10 flex items-center gap-x-6">
-          <a
-            href="#"
-            class="rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
-            >Get started</a
-          >
-          <a href="#" class="text-sm font-semibold leading-6 text-white"
-            >Learn more <span aria-hidden="true">→</span></a
-          >
-        </div>
       </div>
-      <div
-        class="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32"
-      >
-        <div class="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">
-          <img
-            src="~/assets/img/game.png"
-            alt="App screenshot"
-            width="2432"
-            height="1442"
-            class="w-[76rem] rounded-md bg-white/5 shadow-2xl ring-1 ring-white/10"
-          />
-        </div>
+      <div class="">
+        <Icosahedron />
       </div>
     </div>
   </div>
