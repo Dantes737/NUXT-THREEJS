@@ -27,12 +27,13 @@ const wireMesh = new THREE.Mesh(geo, wireMat);
 wireMesh.scale.setScalar(1.001);
 
 onMounted(() => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const width = 700;
+  const height = 600;
   const aspect = width / height;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(width, height);
+  renderer.setClearColor(0x000000, 0);
 
   const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.z = 2;
