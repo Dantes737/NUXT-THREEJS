@@ -65,8 +65,10 @@
           class="mt-10 text-4xl font-bold tracking-tight text-white sm:text-6xl"
         >
           Trying to do magic with
-          <span class="text-cyan-600">THREE JS</span> and
-          <span class="text-emerald-600">NUXT JS</span>
+          <span class="text-cyan-600 font-thin">THREE</span
+          ><span class="text-cyan-600">JS</span> and
+          <span class="text-emerald-600 font-thin">NUXT</span
+          ><span class="text-emerald-600">JS</span>
         </h1>
         <p class="mt-6 text-lg leading-8 text-gray-300">
           Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem
