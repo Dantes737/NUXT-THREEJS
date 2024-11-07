@@ -41,6 +41,8 @@ onMounted(() => {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.03;
+  controls.maxDistance = 4.5;
+  controls.minDistance = 1.8;
 
   container.value.appendChild(renderer.domElement);
 
