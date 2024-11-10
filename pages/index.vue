@@ -62,7 +62,7 @@
     >
       <div class="mx-auto max-w-2xl lg:mx-0 lg:max-w-xl lg:pt-8 px-4">
         <h1
-          class="mt-10 text-4xl font-bold tracking-tight text-white sm:text-6xl"
+          class="mt-10 text-4xl font-semibold text-center lg:text-start tracking-tight text-white sm:text-6xl"
         >
           Trying to do magic with
           <span class="text-cyan-600 font-thin">THREE</span
@@ -71,9 +71,7 @@
           ><span class="text-emerald-600">JS</span>
         </h1>
         <p class="mt-6 text-lg leading-8 text-gray-300">
-          Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem
-          cupidatat commodo. Elit sunt amet fugiat veniam occaecat fugiat
-          aliqua.
+          Hi Daniela. What are you doing now ?
         </p>
       </div>
       <div class="">
