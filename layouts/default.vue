@@ -1,10 +1,11 @@
 <script setup>
-import { ref } from "vue";
+const route = useRoute();
+const routeName = computed(() => route.name);
 
 const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Earth", href: "/earth" },
-  { name: "Three City", href: "/city" },
+  { label: "Home", name: "index", href: "/" },
+  { label: "Earth", name: "earth", href: "/earth" },
+  { label: "Three City", name: "city", href: "/city" },
 ];
 </script>
 
@@ -30,9 +31,15 @@ const navigation = [
             :to="item.href"
             v-for="item in navigation"
             :key="item.name"
-            class="text-sm font-semibold leading-6 text-white"
-            >{{ item.name }}</NuxtLink
+            :class="[
+              'font-semibold text-sm hover:drop-shadow-[0_0px_10px_rgba(255,255,255,0.95)] hover:text-white',
+              routeName === item.name
+                ? 'drop-shadow-[0_0px_10px_rgb(77,210,255)] text-emerald-500'
+                : 'text-white/80',
+            ]"
           >
+            {{ item.label }}
+          </NuxtLink>
         </div>
         <div class="flex flex-1 justify-end">
           <a href="#" class="text-sm font-semibold leading-6 text-white"
