@@ -6,7 +6,7 @@ import { JoltPhysics } from "three/addons/physics/JoltPhysics.js";
 const container = ref(null);
 let camera, scene, renderer;
 let physics, position;
-let boxes, spheres;
+let spheres;
 
 async function init() {
   physics = await JoltPhysics();
@@ -54,11 +54,31 @@ async function init() {
   // Boxes
 
   const geometryBox = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-  boxes = new THREE.Mesh(geometryBox, material);
-  boxes.castShadow = true;
-  boxes.receiveShadow = true;
-  boxes.userData.physics = { mass: 1 };
-  scene.add(boxes);
+  const boxes_one = new THREE.Mesh(
+    geometryBox,
+    new THREE.MeshLambertMaterial({ color: "#3a8c5c" })
+  );
+  boxes_one.castShadow = true;
+  boxes_one.receiveShadow = true;
+  boxes_one.userData.physics = { mass: 1 };
+  scene.add(boxes_one);
+
+  const boxes_second = new THREE.Mesh(
+    geometryBox,
+    new THREE.MeshLambertMaterial({ color: "#cc8b3b" })
+  );
+  boxes_second.castShadow = true;
+  boxes_second.receiveShadow = true;
+  boxes_second.userData.physics = { mass: 1 };
+  boxes_second.position.set(3, 5, -1);
+  scene.add(boxes_second);
+
+  const boxes_third = new THREE.Mesh(geometryBox, material);
+  boxes_third.castShadow = true;
+  boxes_third.receiveShadow = true;
+  boxes_third.userData.physics = { mass: 1 };
+  boxes_third.position.set(0, 5, -3);
+  scene.add(boxes_third);
 
   // Spheres
 
@@ -103,20 +123,6 @@ async function init() {
     position.set(0, Math.random() + 1, 0);
     physics.setMeshPosition(spheres, position, index);
   }, 200);
-
-  // setInterval(() => {
-  //   let index = Math.floor(Math.random() * boxes.count);
-
-  //   position.set(0, Math.random() + 1, 0);
-  //   physics.setMeshPosition(boxes, position, index);
-
-  //   //
-
-  //   index = Math.floor(Math.random() * spheres.count);
-
-  //   position.set(0, Math.random() + 1, 0);
-  //   physics.setMeshPosition(spheres, position, index);
-  // }, 500);
 }
 
 function animate() {

@@ -71,12 +71,13 @@
           ><span class="text-emerald-600">JS</span>
         </h1>
         <p class="mt-6 text-lg leading-8 text-gray-300">
-          Hi Daniela. What are you doing now ?
+          This project I'm created with testing purposes. Main technologies what
+          I'm using here it's: Nuxt 3, Tailwind and ThreeJS. Site hosted on
+          Cloudflare Pages.
         </p>
       </div>
-      <div class="">
-        <Icosahedron />
-      </div>
+
+      <Icosahedron />
     </div>
   </div>
 </template>
