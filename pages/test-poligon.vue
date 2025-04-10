@@ -130,7 +130,11 @@ onMounted(() => {
   // Sphere mesh (Three.js)
   const sphereMesh = new THREE.Mesh(
     new THREE.SphereGeometry(sphereRadius, 32, 32),
-    new THREE.MeshStandardMaterial({ color: 0x0077ff })
+    new THREE.MeshStandardMaterial({
+      color: 0x0077ff,
+      metalness: 0.8,
+      roughness: 0.4,
+    })
   );
   sphereMesh.castShadow = true;
   scene.add(sphereMesh);
@@ -212,7 +216,7 @@ onMounted(() => {
   createWall(halfSize, wallHeight / 2, 0, Math.PI / 2);
 
   // Random Boxes Setup
-  const boxCount = 10; // Number of random boxes
+  const boxCount = 15; // Number of random boxes
   const boxSize = 2;
   const boxHeight = 2;
   const halfGroundSize = groundSize / 2;
