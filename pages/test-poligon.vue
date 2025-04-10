@@ -14,8 +14,75 @@ import {
 
 const canvasRef = ref(null);
 const debrisBodies = [];
+const keysPressed = {};
+// joystick refs
+const joystickZone = ref(null);
+const joystick = ref(null);
+
+// movement direction (to be used in animate loop)
+let joystickDir = { x: 0, y: 0 };
+let isTouching = false;
+
+function press(code) {
+  keysPressed[code] = true;
+}
+
+function release(code) {
+  keysPressed[code] = false;
+}
 
 onMounted(() => {
+  const zone = joystickZone.value;
+  const stick = joystick.value;
+
+  const center = { x: 60, y: 60 }; // center of the zone
+
+  const handleMove = (event) => {
+    const touch = event.touches[0];
+    const rect = zone.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
+    const dx = touchX - center.x;
+    const dy = touchY - center.y;
+    const distance = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
+    const angle = Math.atan2(dy, dx);
+
+    const offsetX = Math.cos(angle) * distance;
+    const offsetY = Math.sin(angle) * distance;
+
+    stick.style.left = `${center.x + offsetX - 30}px`;
+    stick.style.top = `${center.y + offsetY - 30}px`;
+
+    // normalize direction
+    joystickDir.x = offsetX / 40;
+    joystickDir.y = offsetY / 40;
+  };
+
+  const resetStick = () => {
+    joystickDir = { x: 0, y: 0 };
+    stick.style.left = "30px";
+    stick.style.top = "30px";
+  };
+
+  zone.addEventListener("touchstart", (e) => {
+    isTouching = true;
+    handleMove(e);
+  });
+
+  zone.addEventListener("touchmove", (e) => {
+    if (isTouching) {
+      handleMove(e);
+    }
+  });
+
+  zone.addEventListener("touchend", () => {
+    isTouching = false;
+    resetStick();
+  });
+
+  //
+
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f0f0);
 
@@ -116,6 +183,21 @@ onMounted(() => {
     position: new Vec3(0, 5, 0),
     material: bounceMaterial, // apply bouncing material here
   });
+
+  window.addEventListener("deviceorientation", (e) => {
+    const gamma = e.gamma || 0; // left/right tilt (-90 to 90)
+    const beta = e.beta || 0; // front/back tilt (0 to 180)
+
+    // Convert to direction force
+    const xForce = (gamma / 90) * 10;
+    const zForce = ((90 - beta) / 90) * 10;
+
+    // Apply to ball
+    if (sphereBody) {
+      sphereBody.applyForce(new Vec3(xForce, 0, zForce), sphereBody.position);
+    }
+  });
+
   world.addBody(sphereBody);
 
   // Ground physics
@@ -300,6 +382,7 @@ onMounted(() => {
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
+
     world.step(1 / 60, delta);
 
     const moveForce = 20;
@@ -315,6 +398,19 @@ onMounted(() => {
     if (keysPressed["ArrowRight"]) {
       sphereBody.applyForce(new Vec3(moveForce, 0, 0), sphereBody.position);
     }
+
+    // Joystick-based movement
+    if (joystickDir.x !== 0 || joystickDir.y !== 0) {
+      sphereBody.applyForce(
+        new CANNON.Vec3(
+          joystickDir.x * moveForce,
+          0,
+          joystickDir.y * moveForce
+        ),
+        sphereBody.position
+      );
+    }
+    // ===
 
     sphereMesh.position.copy(sphereBody.position);
     sphereMesh.quaternion.copy(sphereBody.quaternion);
@@ -334,10 +430,45 @@ onMounted(() => {
     window.removeEventListener("resize", handleResize);
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
+    window.removeEventListener("deviceorientation", handleDeviceOrientation);
+
+    zone.removeEventListener("touchstart", handleMove);
+    zone.removeEventListener("touchmove", handleMove);
+    zone.removeEventListener("touchend", resetStick);
   });
 });
 </script>
 
 <template>
   <canvas ref="canvasRef" class="block w-full h-screen"></canvas>
+
+  <!-- Virtual Joystick -->
+  <div class="joystick-zone" ref="joystickZone">
+    <div class="joystick" ref="joystick"></div>
+  </div>
 </template>
+<style scoped>
+.joystick-zone {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  width: 120px;
+  height: 120px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  touch-action: none;
+  z-index: 10;
+}
+
+.joystick {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: #333;
+  border-radius: 50%;
+  left: 30px;
+  top: 30px;
+  transition: 0.1s;
+  touch-action: none;
+}
+</style>
