@@ -13,6 +13,7 @@ import {
 } from "cannon-es";
 
 const canvasRef = ref(null);
+const debrisBodies = [];
 
 onMounted(() => {
   const scene = new THREE.Scene();
@@ -94,6 +95,18 @@ onMounted(() => {
 
   // Add contact material to world
   world.addContactMaterial(bounceContact);
+
+  world.addEventListener("beginContact", (event) => {
+    const { bodyA, bodyB } = event;
+
+    const ids = [bodyA, bodyB];
+    const ballInvolved = ids.includes(sphereBody);
+    const smashableBox = ids.find((b) => b.userData?.type === "smashable");
+
+    if (ballInvolved && smashableBox) {
+      destroyBox(smashableBox);
+    }
+  });
 
   // Sphere physics
   const sphereRadius = 1;
@@ -204,32 +217,82 @@ onMounted(() => {
   const boxHeight = 2;
   const halfGroundSize = groundSize / 2;
 
-  const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xff9800 });
-
   for (let i = 0; i < boxCount; i++) {
-    // Random positions within ground boundaries
     const randomX = THREE.MathUtils.randFloatSpread(halfGroundSize * 1.5);
     const randomZ = THREE.MathUtils.randFloatSpread(halfGroundSize * 1.5);
     const posY = boxHeight / 2;
 
-    // Three.js Box Mesh
     const boxMesh = new THREE.Mesh(
       new THREE.BoxGeometry(boxSize, boxHeight, boxSize),
-      boxMaterial
+      new THREE.MeshStandardMaterial({ color: 0xff9800 }) // 🔴 make all boxes red
     );
     boxMesh.position.set(randomX, posY, randomZ);
     boxMesh.castShadow = true;
     boxMesh.receiveShadow = true;
     scene.add(boxMesh);
 
-    // Cannon.js Physics Box Body
     const boxBody = new Body({
-      mass: 0, // static box
+      mass: 0,
       shape: new Box(new Vec3(boxSize / 2, boxHeight / 2, boxSize / 2)),
       position: new Vec3(randomX, posY, randomZ),
       material: nonBounceMaterial,
     });
+
+    // 🔥 Mark it as smashable
+    boxBody.userData = { type: "smashable" };
+
     world.addBody(boxBody);
+  }
+
+  function destroyBox(boxBody) {
+    const debrisCount = 8;
+    const size = 0.4;
+    const origin = boxBody.position.clone();
+
+    // Remove original box
+    world.removeBody(boxBody);
+
+    const mesh = scene.children.find(
+      (obj) => obj.isMesh && obj.position.distanceTo(boxBody.position) < 1.1
+    );
+    if (mesh) scene.remove(mesh);
+
+    // Create small debris cubes
+    for (let i = 0; i < debrisCount; i++) {
+      const offset = new Vec3(
+        (Math.random() - 0.5) * 2,
+        Math.random() * 2,
+        (Math.random() - 0.5) * 2
+      );
+
+      // Mesh
+      const debrisMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(size, size, size),
+        new THREE.MeshStandardMaterial({ color: 0xff4444 })
+      );
+      debrisMesh.castShadow = true;
+      scene.add(debrisMesh);
+
+      // Physics body
+      const debrisBody = new Body({
+        mass: 0.5,
+        position: origin.vadd(offset),
+        shape: new Box(new Vec3(size / 2, size / 2, size / 2)),
+        material: nonBounceMaterial,
+      });
+
+      // Give random impulse
+      debrisBody.velocity.set(
+        (Math.random() - 0.5) * 5,
+        Math.random() * 5,
+        (Math.random() - 0.5) * 5
+      );
+
+      world.addBody(debrisBody);
+
+      // Sync debris in animation loop
+      debrisBodies.push({ mesh: debrisMesh, body: debrisBody });
+    }
   }
 
   // Animation loop
@@ -255,6 +318,12 @@ onMounted(() => {
 
     sphereMesh.position.copy(sphereBody.position);
     sphereMesh.quaternion.copy(sphereBody.quaternion);
+
+    // Sync debris
+    debrisBodies.forEach(({ mesh, body }) => {
+      mesh.position.copy(body.position);
+      mesh.quaternion.copy(body.quaternion);
+    });
 
     renderer.render(scene, camera);
   };

@@ -5,7 +5,6 @@ const routeName = computed(() => route.name);
 const navigation = [
   { label: "Home", name: "index", href: "/" },
   { label: "Earth", name: "earth", href: "/earth" },
-  { label: "Three City", name: "city", href: "/city" },
   { label: "Test Poligon", name: "test-poligon", href: "/test-poligon" },
 ];
 </script>
