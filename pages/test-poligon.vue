@@ -5,6 +5,7 @@ import {
   World,
   Vec3,
   Body,
+  Box,
   Sphere,
   Plane,
   Material,
@@ -23,7 +24,10 @@ onMounted(() => {
     0.1,
     1000
   );
-  camera.position.set(0, 3, 7);
+  // Set position above and slightly behind the ball
+  camera.position.set(0, 12, 25);
+  // Look straight down (at the center of the scene)
+  camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
@@ -46,15 +50,18 @@ onMounted(() => {
   scene.add(ambientLight);
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  directionalLight.position.set(5, 10, 7);
+  directionalLight.position.set(15, 25, 10);
   directionalLight.castShadow = true;
-  directionalLight.shadow.mapSize.set(1024, 1024);
+
+  // Set up shadow properties for the light
+  directionalLight.shadow.camera.top = 30;
+  directionalLight.shadow.camera.bottom = -30;
+  directionalLight.shadow.camera.left = -30;
+  directionalLight.shadow.camera.right = 30;
   directionalLight.shadow.camera.near = 0.5;
-  directionalLight.shadow.camera.far = 50;
-  directionalLight.shadow.camera.top = 10;
-  directionalLight.shadow.camera.bottom = -10;
-  directionalLight.shadow.camera.left = -10;
-  directionalLight.shadow.camera.right = 10;
+  directionalLight.shadow.camera.far = 100;
+  directionalLight.shadow.mapSize.set(2048, 2048);
+
   scene.add(directionalLight);
 
   // Cannon.js setup
@@ -62,12 +69,28 @@ onMounted(() => {
     gravity: new Vec3(0, -9.82, 0),
   });
 
-  // Create physics material with restitution (bounciness)
-  const bounceMaterial = new Material("bounceMaterial");
+  // create materials for the ball and ground
+  const bounceMaterial = new Material("bouncy"); // For ball and ground
+  const nonBounceMaterial = new Material("nonBouncy");
+
+  // Create physics material with restitution
+  // Ball ↔ Ground → bouncy
   const bounceContact = new ContactMaterial(bounceMaterial, bounceMaterial, {
-    friction: 0.01, // low friction to allow smooth bouncing
-    restitution: 0.8, // restitution controls the bounce (0.0–1.0)
+    friction: 0.01,
+    restitution: 0.8, // bouncy!
   });
+  world.addContactMaterial(bounceContact);
+
+  // Ball ↔ Boxes → no bounce
+  const noBounceContact = new ContactMaterial(
+    bounceMaterial,
+    nonBounceMaterial,
+    {
+      friction: 0.4,
+      restitution: 0, // no bounce at all
+    }
+  );
+  world.addContactMaterial(noBounceContact);
 
   // Add contact material to world
   world.addContactMaterial(bounceContact);
@@ -75,7 +98,7 @@ onMounted(() => {
   // Sphere physics
   const sphereRadius = 1;
   const sphereBody = new Body({
-    mass: 5,
+    mass: 4,
     shape: new Sphere(sphereRadius),
     position: new Vec3(0, 5, 0),
     material: bounceMaterial, // apply bouncing material here
@@ -101,7 +124,7 @@ onMounted(() => {
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
   const groundMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 20),
+    new THREE.PlaneGeometry(40, 40),
     new THREE.MeshStandardMaterial({ color: 0x4caf50 }) // green color
   );
   groundMesh.rotation.x = -Math.PI / 2;
@@ -111,13 +134,125 @@ onMounted(() => {
   // Animation loop
   const clock = new THREE.Clock();
 
+  // Controls Implementation
+  const keysPressed = {};
+
+  const handleKeyDown = (event) => {
+    keysPressed[event.code] = true;
+
+    if (event.code === "Space") {
+      const velocity = sphereBody.velocity;
+      if (Math.abs(sphereBody.position.y - sphereRadius) < 0.05) {
+        // ball on ground check
+        velocity.y = 7; // jump impulse strength
+      }
+    }
+  };
+
+  const handleKeyUp = (event) => {
+    keysPressed[event.code] = false;
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+
+  // Create walls
+  const wallHeight = 5;
+  const groundSize = 40;
+  const wallThickness = 0.5;
+  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+
+  const createWall = (x, y, z, rotY = 0) => {
+    // Three.js Mesh
+    const wallMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(groundSize, wallHeight, wallThickness),
+      wallMaterial
+    );
+    wallMesh.position.set(x, y, z);
+    wallMesh.rotation.y = rotY;
+    wallMesh.receiveShadow = true;
+    wallMesh.castShadow = true;
+    scene.add(wallMesh);
+
+    // Cannon.js Body
+    const wallBody = new Body({
+      mass: 0,
+      shape: new Box(
+        new Vec3(groundSize / 2, wallHeight / 2, wallThickness / 2)
+      ),
+      position: new Vec3(x, y, z),
+    });
+    wallBody.quaternion.setFromEuler(0, rotY, 0);
+    world.addBody(wallBody);
+  };
+
+  // Borders positions
+  const halfSize = groundSize / 2;
+
+  // Front wall
+  createWall(0, wallHeight / 2, -halfSize, 0);
+  // Back wall
+  createWall(0, wallHeight / 2, halfSize, 0);
+  // Left wall
+  createWall(-halfSize, wallHeight / 2, 0, Math.PI / 2);
+  // Right wall
+  createWall(halfSize, wallHeight / 2, 0, Math.PI / 2);
+
+  // Random Boxes Setup
+  const boxCount = 10; // Number of random boxes
+  const boxSize = 2;
+  const boxHeight = 2;
+  const halfGroundSize = groundSize / 2;
+
+  const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xff9800 });
+
+  for (let i = 0; i < boxCount; i++) {
+    // Random positions within ground boundaries
+    const randomX = THREE.MathUtils.randFloatSpread(halfGroundSize * 1.5);
+    const randomZ = THREE.MathUtils.randFloatSpread(halfGroundSize * 1.5);
+    const posY = boxHeight / 2;
+
+    // Three.js Box Mesh
+    const boxMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(boxSize, boxHeight, boxSize),
+      boxMaterial
+    );
+    boxMesh.position.set(randomX, posY, randomZ);
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+    scene.add(boxMesh);
+
+    // Cannon.js Physics Box Body
+    const boxBody = new Body({
+      mass: 0, // static box
+      shape: new Box(new Vec3(boxSize / 2, boxHeight / 2, boxSize / 2)),
+      position: new Vec3(randomX, posY, randomZ),
+      material: nonBounceMaterial,
+    });
+    world.addBody(boxBody);
+  }
+
+  // Animation loop
   const animate = () => {
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
     world.step(1 / 60, delta);
 
-    // Sync Cannon.js and Three.js positions
+    const moveForce = 20;
+    if (keysPressed["ArrowUp"]) {
+      sphereBody.applyForce(new Vec3(0, 0, -moveForce), sphereBody.position);
+    }
+    if (keysPressed["ArrowDown"]) {
+      sphereBody.applyForce(new Vec3(0, 0, moveForce), sphereBody.position);
+    }
+    if (keysPressed["ArrowLeft"]) {
+      sphereBody.applyForce(new Vec3(-moveForce, 0, 0), sphereBody.position);
+    }
+    if (keysPressed["ArrowRight"]) {
+      sphereBody.applyForce(new Vec3(moveForce, 0, 0), sphereBody.position);
+    }
+
     sphereMesh.position.copy(sphereBody.position);
     sphereMesh.quaternion.copy(sphereBody.quaternion);
 
@@ -128,6 +263,8 @@ onMounted(() => {
 
   onUnmounted(() => {
     window.removeEventListener("resize", handleResize);
+    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
   });
 });
 </script>
