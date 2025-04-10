@@ -23,14 +23,6 @@ const joystick = ref(null);
 let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 
-function press(code) {
-  keysPressed[code] = true;
-}
-
-function release(code) {
-  keysPressed[code] = false;
-}
-
 onMounted(() => {
   const zone = joystickZone.value;
   const stick = joystick.value;
@@ -182,20 +174,6 @@ onMounted(() => {
     shape: new Sphere(sphereRadius),
     position: new Vec3(0, 5, 0),
     material: bounceMaterial, // apply bouncing material here
-  });
-
-  window.addEventListener("deviceorientation", (e) => {
-    const gamma = e.gamma || 0; // left/right tilt (-90 to 90)
-    const beta = e.beta || 0; // front/back tilt (0 to 180)
-
-    // Convert to direction force
-    const xForce = (gamma / 90) * 10;
-    const zForce = ((90 - beta) / 90) * 10;
-
-    // Apply to ball
-    if (sphereBody) {
-      sphereBody.applyForce(new Vec3(xForce, 0, zForce), sphereBody.position);
-    }
   });
 
   world.addBody(sphereBody);
@@ -400,15 +378,18 @@ onMounted(() => {
     }
 
     // Joystick-based movement
-    if (joystickDir.x !== 0 || joystickDir.y !== 0) {
-      sphereBody.applyForce(
-        new CANNON.Vec3(
-          joystickDir.x * moveForce,
-          0,
-          joystickDir.y * moveForce
-        ),
-        sphereBody.position
+    const threshold = 0.05; // ignore tiny joystick inputs (helps jitter)
+
+    if (
+      Math.abs(joystickDir.x) > threshold ||
+      Math.abs(joystickDir.y) > threshold
+    ) {
+      const force = new Vec3(
+        joystickDir.x * moveForce,
+        0,
+        -joystickDir.y * moveForce // invert Y axis so "up" = forward
       );
+      sphereBody.applyForce(force, sphereBody.position);
     }
     // ===
 
@@ -430,7 +411,6 @@ onMounted(() => {
     window.removeEventListener("resize", handleResize);
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
-    window.removeEventListener("deviceorientation", handleDeviceOrientation);
 
     zone.removeEventListener("touchstart", handleMove);
     zone.removeEventListener("touchmove", handleMove);
