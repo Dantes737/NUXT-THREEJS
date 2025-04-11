@@ -11,6 +11,9 @@ dependencies:
   nuxt:
     specifier: ^3.12.4
     version: 3.12.4(vite@5.4.1)
+  stats.js:
+    specifier: ^0.17.0
+    version: 0.17.0
   three:
     specifier: ^0.167.1
     version: 0.167.1
@@ -5129,6 +5132,10 @@ packages:
 
   /standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+    dev: false
+
+  /stats.js@0.17.0:
+    resolution: {integrity: sha512-hNKz8phvYLPEcRkeG1rsGmV5ChMjKDAWU7/OJJdDErPBNChQXxCo3WZurGpnWc6gZhAzEPFad1aVgyOANH1sMw==}
     dev: false
 
   /statuses@2.0.1:
