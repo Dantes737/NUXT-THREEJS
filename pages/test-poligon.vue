@@ -22,15 +22,26 @@ const joystick = ref(null);
 // movement direction (to be used in animate loop)
 let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
+let jumpSound = null;
+
+function press(code) {
+  keysPressed[code] = true;
+}
+
+function release(code) {
+  keysPressed[code] = false;
+}
 
 onMounted(() => {
+  jumpSound = new Audio("/sounds/jumpSound.mp3");
+  jumpSound.volume = 0.5;
   const zone = joystickZone.value;
   const stick = joystick.value;
 
   const center = { x: 60, y: 60 }; // center of the zone
 
-  const handleMove = (event) => {
-    const touch = event.touches[0];
+  const handleMove = ({ touches }) => {
+    const touch = touches[0];
     const rect = zone.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
@@ -69,6 +80,23 @@ onMounted(() => {
   });
 
   zone.addEventListener("touchend", () => {
+    isTouching = false;
+    resetStick();
+  });
+
+  // Mouse events for desktop
+  zone.addEventListener("mousedown", (e) => {
+    isTouching = true;
+    handleMove({ touches: [e] });
+  });
+  zone.addEventListener("mousemove", (e) => {
+    if (isTouching) handleMove({ touches: [e] });
+  });
+  zone.addEventListener("mouseup", () => {
+    isTouching = false;
+    resetStick();
+  });
+  zone.addEventListener("mouseleave", () => {
     isTouching = false;
     resetStick();
   });
@@ -207,9 +235,6 @@ onMounted(() => {
   // Animation loop
   const clock = new THREE.Clock();
 
-  // Controls Implementation
-  const keysPressed = {};
-
   const handleKeyDown = (event) => {
     keysPressed[event.code] = true;
 
@@ -254,6 +279,7 @@ onMounted(() => {
         new Vec3(groundSize / 2, wallHeight / 2, wallThickness / 2)
       ),
       position: new Vec3(x, y, z),
+      material: nonBounceMaterial,
     });
     wallBody.quaternion.setFromEuler(0, rotY, 0);
     world.addBody(wallBody);
@@ -377,6 +403,17 @@ onMounted(() => {
       sphereBody.applyForce(new Vec3(moveForce, 0, 0), sphereBody.position);
     }
 
+    if (keysPressed["Space"]) {
+      const velocity = sphereBody.velocity;
+      const grounded = Math.abs(sphereBody.position.y - sphereRadius) < 0.05;
+      if (grounded) {
+        velocity.y = 7; // jump strength
+        jumpSound.currentTime = 0;
+        jumpSound.play();
+      }
+      keysPressed["Space"] = false; // trigger only once per tap
+    }
+
     // Joystick-based movement
     const threshold = 0.05; // ignore tiny joystick inputs (helps jitter)
 
@@ -422,22 +459,40 @@ onMounted(() => {
 <template>
   <canvas ref="canvasRef" class="block w-full h-screen"></canvas>
 
-  <!-- Virtual Joystick -->
-  <div class="joystick-zone" ref="joystickZone">
-    <div class="joystick" ref="joystick"></div>
+  <!-- Virtual Joystick + Jump -->
+  <div class="joystick-wrapper">
+    <div class="joystick-zone" ref="joystickZone">
+      <div class="joystick" ref="joystick"></div>
+    </div>
+    <button
+      class="jump-button"
+      @mousedown="press('Space')"
+      @mouseup="release('Space')"
+      @touchstart.prevent="press('Space')"
+      @touchend.prevent="release('Space')"
+    >
+      Jump
+    </button>
   </div>
 </template>
 <style scoped>
-.joystick-zone {
+.joystick-wrapper {
   position: absolute;
   bottom: 30px;
   left: 30px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  z-index: 10;
+}
+
+.joystick-zone {
   width: 120px;
   height: 120px;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 50%;
+  position: relative;
   touch-action: none;
-  z-index: 10;
 }
 
 .joystick {
@@ -450,5 +505,20 @@ onMounted(() => {
   top: 30px;
   transition: 0.1s;
   touch-action: none;
+}
+
+.jump-button {
+  width: 80px;
+  height: 80px;
+  font-size: 28px;
+  border-radius: 50%;
+  background: #0077ff;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  touch-action: none;
+}
+.jump-button:active {
+  background: #0057cc;
 }
 </style>
