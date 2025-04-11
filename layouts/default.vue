@@ -10,7 +10,7 @@ const navigation = [
 </script>
 
 <template>
-  <div class="bg-gray-900 h-dvh">
+  <div class="bg-gray-900 h-screen overflow-hidden">
     <header class="bg-indigo-950/90 sticky top-0 z-50">
       <nav
         class="mx-auto flex flex-row max-w-7xl items-center justify-between px-6 py-3 lg:px-8"
@@ -48,9 +48,10 @@ const navigation = [
         </div>
       </nav>
     </header>
-
-    <main>
-      <slot />
-    </main>
+    <div>
+      <main>
+        <slot />
+      </main>
+    </div>
   </div>
 </template>

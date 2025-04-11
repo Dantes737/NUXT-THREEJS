@@ -12,6 +12,9 @@ import {
   ContactMaterial,
 } from "cannon-es";
 
+import Stats from "stats.js";
+
+const container = ref(null);
 const canvasRef = ref(null);
 const debrisBodies = [];
 const keysPressed = {};
@@ -24,6 +27,7 @@ let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
+let isGrounded = false;
 
 function press(code) {
   keysPressed[code] = true;
@@ -34,6 +38,11 @@ function release(code) {
 }
 
 onMounted(() => {
+  const stats = new Stats();
+  stats.showPanel(0); // 0 = FPS, 1 = ms, 2 = memory
+
+  container.value.appendChild(stats.dom);
+
   jumpSound = new Audio("/sounds/jumpSound.mp3");
   jumpSound.volume = 0.5;
 
@@ -134,7 +143,7 @@ onMounted(() => {
     1000
   );
   // Set position above and slightly behind the ball
-  camera.position.set(0, 12, 25);
+  camera.position.set(0, 16, 27);
   // Look straight down (at the center of the scene)
   camera.lookAt(0, 0, 0);
 
@@ -203,35 +212,6 @@ onMounted(() => {
   world.addContactMaterial(noBounceContact);
   world.addContactMaterial(bounceContact);
 
-  world.addEventListener("beginContact", (event) => {
-    const { bodyA, bodyB, contact } = event;
-
-    const ids = [bodyA, bodyB];
-    const ballInvolved = ids.includes(sphereBody);
-    const smashableBox = ids.find((b) => b.userData?.type === "smashable");
-
-    if (ballInvolved && smashableBox) {
-      destroyBox(smashableBox);
-    }
-
-    // BOUNCE SOUND logic
-    if (ballInvolved) {
-      // Get the other body
-      const otherBody = bodyA === sphereBody ? bodyB : bodyA;
-
-      // Calculate relative velocity between ball and the other object
-      const relativeVelocity = sphereBody.velocity.vsub(
-        otherBody.velocity || new Vec3(0, 0, 0)
-      );
-      const impactSpeed = relativeVelocity.length();
-
-      if (impactSpeed > 1.5) {
-        bounceSound.currentTime = 0;
-        bounceSound.play();
-      }
-    }
-  });
-
   // Sphere physics
   const sphereRadius = 1;
   const sphereBody = new Body({
@@ -273,20 +253,69 @@ onMounted(() => {
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
 
+  world.addEventListener("beginContact", (event) => {
+    const { bodyA, bodyB } = event;
+
+    const ids = [bodyA, bodyB];
+    const ballInvolved = ids.includes(sphereBody);
+    const smashableBox = ids.find((b) => b.userData?.type === "smashable");
+
+    if (ballInvolved && smashableBox) {
+      destroyBox(smashableBox);
+    }
+
+    // BOUNCE logic
+    if (ballInvolved) {
+      const otherBody = bodyA === sphereBody ? bodyB : bodyA;
+
+      // Consider grounded if downward velocity is strong enough on contact
+      const impactVelocity = Math.abs(sphereBody.velocity.y);
+      if (otherBody.mass === 0 && impactVelocity > 0.1) {
+        isGrounded = true;
+      }
+
+      // bounce sound logic
+      const relativeVelocity = sphereBody.velocity.vsub(
+        otherBody.velocity || new Vec3(0, 0, 0)
+      );
+      const impactSpeed = relativeVelocity.length();
+
+      if (impactSpeed > 1.5) {
+        bounceSound.currentTime = 0;
+        bounceSound.play();
+      }
+
+      // destroy boxes
+      const smashableBox = [bodyA, bodyB].find(
+        (b) => b.userData?.type === "smashable"
+      );
+      if (smashableBox) destroyBox(smashableBox);
+    }
+  });
+
+  world.addEventListener("endContact", (event) => {
+    const { bodyA, bodyB } = event;
+
+    const ids = [bodyA, bodyB];
+    if (ids.includes(sphereBody)) {
+      isGrounded = false;
+    }
+  });
+
   // Animation loop
   const clock = new THREE.Clock();
 
   const handleKeyDown = (event) => {
     keysPressed[event.code] = true;
 
-    if (event.code === "Space") {
-      const velocity = sphereBody.velocity;
-      if (Math.abs(sphereBody.position.y - sphereRadius) < 0.05) {
-        // ball on ground check
-        velocity.y = 7; // jump impulse strength
+    if (keysPressed["Space"]) {
+      if (isGrounded) {
+        sphereBody.velocity.y = 7;
         jumpSound.currentTime = 0;
         jumpSound.play();
+        isGrounded = false;
       }
+      keysPressed["Space"] = false;
     }
   };
 
@@ -426,6 +455,8 @@ onMounted(() => {
 
   // Animation loop
   const animate = () => {
+    stats.begin();
+
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
@@ -447,12 +478,11 @@ onMounted(() => {
     }
 
     if (keysPressed["Space"]) {
-      const velocity = sphereBody.velocity;
-      const grounded = Math.abs(sphereBody.position.y - sphereRadius) < 0.05;
-      if (grounded) {
-        velocity.y = 9; // jump strength
+      if (isGrounded) {
+        sphereBody.velocity.y = 7;
         jumpSound.currentTime = 0;
         jumpSound.play();
+        isGrounded = false; // avoid double jump in same frame
       }
       keysPressed["Space"] = false; // trigger only once per tap
     }
@@ -483,6 +513,8 @@ onMounted(() => {
     });
 
     renderer.render(scene, camera);
+
+    stats.end();
   };
 
   animate();
@@ -500,35 +532,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="block w-full h-screen"></canvas>
+  <div ref="container" class="w-full">
+    <canvas ref="canvasRef" class="block"></canvas>
 
-  <!-- Virtual Joystick + Jump -->
-  <div class="joystick-wrapper">
-    <div class="joystick-zone" ref="joystickZone">
-      <div class="joystick" ref="joystick"></div>
+    <!-- Virtual Joystick + Jump -->
+    <div class="absolute flex z-10 bottom-7 gap-5 items-center left-7">
+      <div class="joystick-zone" ref="joystickZone">
+        <div class="joystick" ref="joystick"></div>
+      </div>
+      <button
+        class="jump-button"
+        @mousedown="press('Space')"
+        @mouseup="release('Space')"
+        @touchstart.prevent="press('Space')"
+        @touchend.prevent="release('Space')"
+      >
+        Jump
+      </button>
     </div>
-    <button
-      class="jump-button"
-      @mousedown="press('Space')"
-      @mouseup="release('Space')"
-      @touchstart.prevent="press('Space')"
-      @touchend.prevent="release('Space')"
-    >
-      Jump
-    </button>
   </div>
 </template>
 <style scoped>
-.joystick-wrapper {
-  position: absolute;
-  bottom: 30px;
-  left: 30px;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  z-index: 10;
-}
-
 .joystick-zone {
   width: 120px;
   height: 120px;

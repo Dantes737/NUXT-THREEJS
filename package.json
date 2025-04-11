@@ -12,6 +12,7 @@
   "dependencies": {
     "cannon-es": "^0.20.0",
     "nuxt": "^3.12.4",
+    "stats.js": "^0.17.0",
     "three": "^0.167.1",
     "vue": "latest"
   },
