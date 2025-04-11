@@ -218,7 +218,11 @@ onMounted(() => {
   // Sphere mesh (Three.js)
   const sphereMesh = new THREE.Mesh(
     new THREE.SphereGeometry(sphereRadius, 32, 32),
-    new THREE.MeshStandardMaterial({ color: 0x0077ff })
+    new THREE.MeshStandardMaterial({
+      color: 0x0077ff,
+      metalness: 0.2,
+      roughness: 0.5,
+    })
   );
   sphereMesh.castShadow = true;
   scene.add(sphereMesh);
