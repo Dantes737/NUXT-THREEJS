@@ -23,6 +23,7 @@ const joystick = ref(null);
 let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 let jumpSound = null;
+let bounceSound = null;
 
 function press(code) {
   keysPressed[code] = true;
@@ -35,6 +36,26 @@ function release(code) {
 onMounted(() => {
   jumpSound = new Audio("/sounds/jumpSound.mp3");
   jumpSound.volume = 0.5;
+
+  bounceSound = new Audio("/sounds/bounceSound.mp3");
+  bounceSound.volume = 0.4;
+
+  const unlockAudio = () => {
+    jumpSound.play().catch(() => {});
+    bounceSound.play().catch(() => {});
+    jumpSound.pause();
+    bounceSound.pause();
+    jumpSound.currentTime = 0;
+    bounceSound.currentTime = 0;
+
+    window.removeEventListener("touchstart", unlockAudio);
+    window.removeEventListener("click", unlockAudio);
+  };
+
+  window.addEventListener("touchstart", unlockAudio, { once: true });
+  window.addEventListener("click", unlockAudio, { once: true });
+
+  // Joystick setup
   const zone = joystickZone.value;
   const stick = joystick.value;
 
@@ -59,7 +80,7 @@ onMounted(() => {
 
     // normalize direction
     joystickDir.x = offsetX / 40;
-    joystickDir.y = offsetY / 40;
+    joystickDir.y = -offsetY / 40;
   };
 
   const resetStick = () => {
@@ -167,7 +188,6 @@ onMounted(() => {
     friction: 0.01,
     restitution: 0.8, // bouncy!
   });
-  world.addContactMaterial(bounceContact);
 
   // Ball ↔ Boxes → no bounce
   const noBounceContact = new ContactMaterial(
@@ -178,13 +198,13 @@ onMounted(() => {
       restitution: 0, // no bounce at all
     }
   );
-  world.addContactMaterial(noBounceContact);
 
   // Add contact material to world
+  world.addContactMaterial(noBounceContact);
   world.addContactMaterial(bounceContact);
 
   world.addEventListener("beginContact", (event) => {
-    const { bodyA, bodyB } = event;
+    const { bodyA, bodyB, contact } = event;
 
     const ids = [bodyA, bodyB];
     const ballInvolved = ids.includes(sphereBody);
@@ -193,12 +213,29 @@ onMounted(() => {
     if (ballInvolved && smashableBox) {
       destroyBox(smashableBox);
     }
+
+    // BOUNCE SOUND logic
+    if (ballInvolved) {
+      // Get the other body
+      const otherBody = bodyA === sphereBody ? bodyB : bodyA;
+
+      // Calculate relative velocity between ball and the other object
+      const relativeVelocity = sphereBody.velocity.vsub(
+        otherBody.velocity || new Vec3(0, 0, 0)
+      );
+      const impactSpeed = relativeVelocity.length();
+
+      if (impactSpeed > 1.5) {
+        bounceSound.currentTime = 0;
+        bounceSound.play();
+      }
+    }
   });
 
   // Sphere physics
   const sphereRadius = 1;
   const sphereBody = new Body({
-    mass: 4,
+    mass: 6,
     shape: new Sphere(sphereRadius),
     position: new Vec3(0, 5, 0),
     material: bounceMaterial, // apply bouncing material here
@@ -247,6 +284,8 @@ onMounted(() => {
       if (Math.abs(sphereBody.position.y - sphereRadius) < 0.05) {
         // ball on ground check
         velocity.y = 7; // jump impulse strength
+        jumpSound.currentTime = 0;
+        jumpSound.play();
       }
     }
   };
@@ -411,7 +450,7 @@ onMounted(() => {
       const velocity = sphereBody.velocity;
       const grounded = Math.abs(sphereBody.position.y - sphereRadius) < 0.05;
       if (grounded) {
-        velocity.y = 7; // jump strength
+        velocity.y = 9; // jump strength
         jumpSound.currentTime = 0;
         jumpSound.play();
       }
