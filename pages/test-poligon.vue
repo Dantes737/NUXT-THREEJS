@@ -269,46 +269,53 @@ onMounted(() => {
     roughness: 0.3,
   });
   const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
-  // ringMesh.rotation.x = Math.PI / 2;
-  ringMesh.position.set(0, 3, -10);
+
+  ringMesh.rotation.y = Math.PI / 1.2;
+  ringMesh.position.set(0, 4, -10);
   ringMesh.castShadow = true;
   scene.add(ringMesh);
 
-  const ringSegments = 8;
+  // Create ring segments
+  const ringCenter = ringMesh.position;
+  const ringRotation = ringMesh.rotation.y;
+
+  const ringSegments = 12;
   const segmentWidth = 1;
   const segmentHeight = 1;
   const segmentDepth = 0.3;
 
   for (let i = 0; i < ringSegments; i++) {
     const angle = (i / ringSegments) * Math.PI * 2;
-    const x = ringRadius * Math.cos(angle);
-    const z = ringRadius * Math.sin(angle);
+    const finalAngle = angle + ringRotation;
+
+    const x = ringRadius * Math.cos(finalAngle);
+    const y = ringRadius * Math.sin(finalAngle);
 
     const segmentBody = new Body({
       mass: 0,
       shape: new Box(
         new Vec3(segmentWidth / 2, segmentHeight / 2, segmentDepth / 2)
       ),
-      position: new Vec3(x + 0, 3, z - 10),
+      position: new Vec3(ringCenter.x + x, ringCenter.y + y, ringCenter.z),
       material: nonBounceMaterial,
     });
 
     // Rotate segment to face center
-    segmentBody.quaternion.setFromEuler(0, -angle, 0);
+    segmentBody.quaternion.setFromEuler(0, 0, -finalAngle);
     world.addBody(segmentBody);
 
-    // Optional: add invisible Three.js mesh for debug
-    const debugMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(segmentWidth, segmentHeight, segmentDepth),
-      new THREE.MeshStandardMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.3,
-      })
-    );
-    debugMesh.position.set(x + 0, 3, z - 10);
-    debugMesh.rotation.y = -angle;
-    scene.add(debugMesh);
+    // Debug mesh (optional)
+    // const debugMesh = new THREE.Mesh(
+    //   new THREE.BoxGeometry(segmentWidth, segmentHeight, segmentDepth),
+    //   new THREE.MeshStandardMaterial({
+    //     color: 0x000000,
+    //     transparent: true,
+    //     opacity: 0.3,
+    //   })
+    // );
+    // debugMesh.position.set(ringCenter.x + x, ringCenter.y + y, ringCenter.z);
+    // debugMesh.rotation.z = -finalAngle;
+    // scene.add(debugMesh);
   }
   //
 
