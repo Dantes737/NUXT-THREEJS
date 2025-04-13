@@ -12,10 +12,12 @@ import {
   ContactMaterial,
 } from "cannon-es";
 
-import Stats from "stats.js";
+// import Stats from "stats.js";
 
 const container = ref(null);
 const canvasRef = ref(null);
+const score = ref(0);
+
 const debrisBodies = [];
 const keysPressed = {};
 // joystick refs
@@ -28,9 +30,11 @@ let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
 let isGrounded = false;
+let jumpRequested = false;
 
-function press(code) {
-  keysPressed[code] = true;
+function pressJupm() {
+  jumpRequested = true;
+  keysPressed.Space = true;
 }
 
 function release(code) {
@@ -38,10 +42,10 @@ function release(code) {
 }
 
 onMounted(() => {
-  const stats = new Stats();
-  stats.showPanel(0); // 0 = FPS, 1 = ms, 2 = memory
+  // const stats = new Stats();
+  // stats.showPanel(0); // 0 = FPS, 1 = ms, 2 = memory
 
-  container.value.appendChild(stats.dom);
+  // container.value.appendChild(stats.dom);
 
   jumpSound = new Audio("/sounds/jumpSound.mp3");
   jumpSound.volume = 0.5;
@@ -253,6 +257,61 @@ onMounted(() => {
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
 
+  // Add a ring under the ground
+  const ringRadius = 3;
+  const ringTube = 0.4;
+
+  const ringGeometry = new THREE.TorusGeometry(ringRadius, ringTube, 16, 100);
+  const ringMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffd700,
+    emissive: 0xffd700,
+    metalness: 1,
+    roughness: 0.3,
+  });
+  const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+  // ringMesh.rotation.x = Math.PI / 2;
+  ringMesh.position.set(0, 3, -10);
+  ringMesh.castShadow = true;
+  scene.add(ringMesh);
+
+  const ringSegments = 8;
+  const segmentWidth = 1;
+  const segmentHeight = 1;
+  const segmentDepth = 0.3;
+
+  for (let i = 0; i < ringSegments; i++) {
+    const angle = (i / ringSegments) * Math.PI * 2;
+    const x = ringRadius * Math.cos(angle);
+    const z = ringRadius * Math.sin(angle);
+
+    const segmentBody = new Body({
+      mass: 0,
+      shape: new Box(
+        new Vec3(segmentWidth / 2, segmentHeight / 2, segmentDepth / 2)
+      ),
+      position: new Vec3(x + 0, 3, z - 10),
+      material: nonBounceMaterial,
+    });
+
+    // Rotate segment to face center
+    segmentBody.quaternion.setFromEuler(0, -angle, 0);
+    world.addBody(segmentBody);
+
+    // Optional: add invisible Three.js mesh for debug
+    const debugMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(segmentWidth, segmentHeight, segmentDepth),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.3,
+      })
+    );
+    debugMesh.position.set(x + 0, 3, z - 10);
+    debugMesh.rotation.y = -angle;
+    scene.add(debugMesh);
+  }
+  //
+
   world.addEventListener("beginContact", (event) => {
     const { bodyA, bodyB } = event;
 
@@ -269,9 +328,10 @@ onMounted(() => {
       const otherBody = bodyA === sphereBody ? bodyB : bodyA;
 
       // Consider grounded if downward velocity is strong enough on contact
-      const impactVelocity = Math.abs(sphereBody.velocity.y);
-      if (otherBody.mass === 0 && impactVelocity > 0.1) {
-        isGrounded = true;
+      if (otherBody.mass === 0) {
+        if (Math.abs(sphereBody.velocity.y) < 30) {
+          isGrounded = true;
+        }
       }
 
       // bounce sound logic
@@ -310,12 +370,15 @@ onMounted(() => {
 
     if (keysPressed["Space"]) {
       if (isGrounded) {
-        sphereBody.velocity.y = 7;
+        sphereBody.velocity.y = 8;
         jumpSound.currentTime = 0;
         jumpSound.play();
+
         isGrounded = false;
+        jumpRequested = false;
+      } else {
+        jumpRequested = true;
       }
-      keysPressed["Space"] = false;
     }
   };
 
@@ -455,13 +518,22 @@ onMounted(() => {
 
   // Animation loop
   const animate = () => {
-    stats.begin();
+    // stats.begin();
 
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
 
     world.step(1 / 60, delta);
+
+    if (jumpRequested && isGrounded) {
+      sphereBody.velocity.y = 7;
+      jumpSound.currentTime = 0;
+      jumpSound.play();
+
+      isGrounded = false;
+      jumpRequested = false;
+    }
 
     const moveForce = 20;
     if (keysPressed["ArrowUp"]) {
@@ -484,6 +556,7 @@ onMounted(() => {
         jumpSound.play();
         isGrounded = false; // avoid double jump in same frame
       }
+      jumpRequested = true;
       keysPressed["Space"] = false; // trigger only once per tap
     }
 
@@ -512,9 +585,24 @@ onMounted(() => {
       mesh.quaternion.copy(body.quaternion);
     });
 
+    const ringCenter = ringMesh.position;
+    const ballY = sphereBody.position.y;
+    const ballXZDist = Math.hypot(
+      sphereBody.position.x - ringCenter.x,
+      sphereBody.position.z - ringCenter.z
+    );
+
+    const passedThrough =
+      ballY < ringCenter.y - 1 && // fell below the ring
+      ballXZDist < ringRadius - ringTube * 1.2; // passed through center
+
+    if (passedThrough) {
+      score.value += 1;
+    }
+
     renderer.render(scene, camera);
 
-    stats.end();
+    // stats.end();
   };
 
   animate();
@@ -535,16 +623,28 @@ onMounted(() => {
   <div ref="container" class="w-full">
     <canvas ref="canvasRef" class="block"></canvas>
 
+    <div
+      class="absolute top-16 left-5 z-20 text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded"
+    >
+      Score: {{ score }}
+    </div>
+
     <!-- Virtual Joystick + Jump -->
     <div class="absolute flex z-10 bottom-7 gap-5 items-center left-7">
-      <div class="joystick-zone" ref="joystickZone">
-        <div class="joystick" ref="joystick"></div>
+      <div
+        class="w-[120px] h-[120px] bg-black/10 rounded-full relative touch-none"
+        ref="joystickZone"
+      >
+        <div
+          class="absolute w-[60px] h-[60px] bg-[#333] rounded-full left-[30px] top-[30px] transition-all duration-100 touch-none"
+          ref="joystick"
+        ></div>
       </div>
       <button
-        class="jump-button"
-        @mousedown="press('Space')"
+        class="w-28 h-16 text-[28px] rounded-full bg-blue-600 text-white border-none shadow-[0_4px_12px_rgba(0,0,0,0.2)] touch-none active:bg-blue-800"
+        @mousedown="pressJupm()"
+        @touchstart.prevent="pressJupm()"
         @mouseup="release('Space')"
-        @touchstart.prevent="press('Space')"
         @touchend.prevent="release('Space')"
       >
         Jump
@@ -552,40 +652,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-<style scoped>
-.joystick-zone {
-  width: 120px;
-  height: 120px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  position: relative;
-  touch-action: none;
-}
-
-.joystick {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  background: #333;
-  border-radius: 50%;
-  left: 30px;
-  top: 30px;
-  transition: 0.1s;
-  touch-action: none;
-}
-
-.jump-button {
-  width: 80px;
-  height: 80px;
-  font-size: 28px;
-  border-radius: 50%;
-  background: #0077ff;
-  color: white;
-  border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  touch-action: none;
-}
-.jump-button:active {
-  background: #0057cc;
-}
-</style>
