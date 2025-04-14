@@ -317,7 +317,7 @@ onMounted(() => {
         new Vec3(segmentWidth / 2, segmentHeight / 2, segmentDepth / 2)
       ),
       position: new Vec3(ringCenter.x + x, ringCenter.y + y, ringCenter.z),
-      material: nonBounceMaterial,
+      material: bounceMaterial,
     });
 
     // Rotate segment to face center
