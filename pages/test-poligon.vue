@@ -12,6 +12,8 @@ import {
   ContactMaterial,
 } from "cannon-es";
 
+import { useThrottleFn } from "@vueuse/core";
+
 // import Stats from "stats.js";
 
 const container = ref(null);
@@ -29,6 +31,7 @@ let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
+let coinSound = null;
 let isGrounded = false;
 let jumpRequested = false;
 
@@ -40,6 +43,14 @@ function pressJupm() {
 function release(code) {
   keysPressed[code] = false;
 }
+
+// update player Score, it will be called at most 1 time per 1.7 second
+const updateScore = useThrottleFn(() => {
+  score.value += 1;
+
+  coinSound.currentTime = 0;
+  coinSound.play();
+}, 1700);
 
 onMounted(() => {
   // const stats = new Stats();
@@ -53,13 +64,22 @@ onMounted(() => {
   bounceSound = new Audio("/sounds/bounceSound.mp3");
   bounceSound.volume = 0.4;
 
+  coinSound = new Audio("/sounds/coinSound.mp3");
+  coinSound.volume = 0.8;
+
   const unlockAudio = () => {
+    // ??????????????????
     jumpSound.play().catch(() => {});
     bounceSound.play().catch(() => {});
+    coinSound.play().catch(() => {});
+
     jumpSound.pause();
     bounceSound.pause();
+    coinSound.pause();
+
     jumpSound.currentTime = 0;
     bounceSound.currentTime = 0;
+    coinSound.currentTime = 0;
 
     window.removeEventListener("touchstart", unlockAudio);
     window.removeEventListener("click", unlockAudio);
@@ -250,7 +270,7 @@ onMounted(() => {
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
   const groundMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 40),
+    new THREE.PlaneGeometry(60, 60),
     new THREE.MeshStandardMaterial({ color: 0x4caf50 }) // green color
   );
   groundMesh.rotation.x = -Math.PI / 2;
@@ -270,8 +290,8 @@ onMounted(() => {
   });
   const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
 
-  ringMesh.rotation.y = Math.PI / 1.2;
-  ringMesh.position.set(0, 4, -10);
+  ringMesh.rotation.y = Math.PI / 1.3;
+  ringMesh.position.set(-2, 12, -9);
   ringMesh.castShadow = true;
   scene.add(ringMesh);
 
@@ -396,54 +416,79 @@ onMounted(() => {
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 
-  // Create walls
-  const wallHeight = 5;
-  const groundSize = 40;
-  const wallThickness = 0.5;
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  // Platform visual (Three.js)
+  const platformWidth = 6;
+  const platformHeight = 0.8;
+  const platformDepth = 6;
+  const platformY = 2; // Height from ground
 
-  const createWall = (x, y, z, rotY = 0) => {
-    // Three.js Mesh
-    const wallMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(groundSize, wallHeight, wallThickness),
-      wallMaterial
-    );
-    wallMesh.position.set(x, y, z);
-    wallMesh.rotation.y = rotY;
-    wallMesh.receiveShadow = true;
-    wallMesh.castShadow = true;
-    scene.add(wallMesh);
+  const platformMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
+    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
+  );
+  platformMesh.position.set(-20, platformY, 3); // Adjust position as you like
+  platformMesh.castShadow = true;
+  platformMesh.receiveShadow = true;
+  scene.add(platformMesh);
 
-    // Cannon.js Body
-    const wallBody = new Body({
-      mass: 0,
-      shape: new Box(
-        new Vec3(groundSize / 2, wallHeight / 2, wallThickness / 2)
-      ),
-      position: new Vec3(x, y, z),
-      material: nonBounceMaterial,
-    });
-    wallBody.quaternion.setFromEuler(0, rotY, 0);
-    world.addBody(wallBody);
-  };
+  const platformBody = new Body({
+    mass: 0, // static platform
+    shape: new Box(
+      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
+    ),
+    position: new Vec3(-20, platformY, 3), // same as mesh
+    material: bounceContact, // solid, not bouncy
+  });
+  world.addBody(platformBody);
 
-  // Borders positions
-  const halfSize = groundSize / 2;
+  //= = = = second platform
+  const secondPlatformMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
+    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
+  );
+  secondPlatformMesh.position.set(-20, 5, -5); // Adjust position as you like
+  secondPlatformMesh.castShadow = true;
+  secondPlatformMesh.receiveShadow = true;
+  scene.add(secondPlatformMesh);
 
-  // Front wall
-  createWall(0, wallHeight / 2, -halfSize, 0);
-  // Back wall
-  createWall(0, wallHeight / 2, halfSize, 0);
-  // Left wall
-  createWall(-halfSize, wallHeight / 2, 0, Math.PI / 2);
-  // Right wall
-  createWall(halfSize, wallHeight / 2, 0, Math.PI / 2);
+  const secondPlatformBody = new Body({
+    mass: 0, // static platform
+    shape: new Box(
+      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
+    ),
+    position: new Vec3(-20, 5, -5), // same as mesh
+    material: bounceContact, // solid, not bouncy
+  });
+  world.addBody(secondPlatformBody);
+
+  //= = = = third platform
+  const thirdPlatformMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
+    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
+  );
+  thirdPlatformMesh.position.set(-8, 7, -5); // Adjust position as you like
+  thirdPlatformMesh.castShadow = true;
+  thirdPlatformMesh.receiveShadow = true;
+  scene.add(thirdPlatformMesh);
+
+  const thirdPlatformBody = new Body({
+    mass: 0, // static platform
+    shape: new Box(
+      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
+    ),
+    position: new Vec3(-8, 7, -5), // same as mesh
+    material: bounceContact, // solid, not bouncy
+  });
+  world.addBody(thirdPlatformBody);
+
+  // = = = =
 
   // Random Boxes Setup
+  const groundZoneForBoxes = 40;
   const boxCount = 15; // Number of random boxes
   const boxSize = 2;
   const boxHeight = 2;
-  const halfGroundSize = groundSize / 2;
+  const halfGroundSize = groundZoneForBoxes / 2;
 
   for (let i = 0; i < boxCount; i++) {
     const randomX = THREE.MathUtils.randFloatSpread(halfGroundSize * 1.5);
@@ -534,7 +579,7 @@ onMounted(() => {
     world.step(1 / 60, delta);
 
     if (jumpRequested && isGrounded) {
-      sphereBody.velocity.y = 7;
+      sphereBody.velocity.y = 8;
       jumpSound.currentTime = 0;
       jumpSound.play();
 
@@ -558,7 +603,7 @@ onMounted(() => {
 
     if (keysPressed["Space"]) {
       if (isGrounded) {
-        sphereBody.velocity.y = 7;
+        sphereBody.velocity.y = 8;
         jumpSound.currentTime = 0;
         jumpSound.play();
         isGrounded = false; // avoid double jump in same frame
@@ -604,7 +649,11 @@ onMounted(() => {
       ballXZDist < ringRadius - ringTube * 1.2; // passed through center
 
     if (passedThrough) {
-      score.value += 1;
+      updateScore();
+    }
+
+    if (sphereBody.velocity.y > 50) {
+      sphereBody.velocity.y = 50;
     }
 
     renderer.render(scene, camera);
