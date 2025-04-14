@@ -167,9 +167,9 @@ onMounted(() => {
     1000
   );
   // Set position above and slightly behind the ball
-  camera.position.set(0, 16, 27);
+  // camera.position.set(0, 16, 27);
   // Look straight down (at the center of the scene)
-  camera.lookAt(0, 0, 0);
+  // camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
@@ -656,6 +656,20 @@ onMounted(() => {
       sphereBody.velocity.y = 50;
     }
 
+    // Offset relative to ball (e.g. behind and above)
+    const cameraOffset = new THREE.Vector3(0, 8, 12);
+
+    // Calculate desired camera position
+    const ballPos = sphereMesh.position;
+    const targetCameraPos = ballPos.clone().add(cameraOffset);
+
+    // Smooth follow using LERP (optional: adjust factor for smoothing)
+    camera.position.lerp(targetCameraPos, 0.9);
+
+    // Look at the ball
+    camera.lookAt(ballPos);
+
+    // = = = RENDERING = = =
     renderer.render(scene, camera);
 
     // stats.end();
