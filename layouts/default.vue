@@ -4,8 +4,8 @@ const routeName = computed(() => route.name);
 
 const navigation = [
   { label: "Home", name: "index", href: "/" },
+  { label: "Bounce", name: "bounce", href: "/bounce" },
   { label: "Earth", name: "earth", href: "/earth" },
-  { label: "Test Poligon", name: "test-poligon", href: "/test-poligon" },
 ];
 </script>
 

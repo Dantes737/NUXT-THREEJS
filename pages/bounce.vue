@@ -41,6 +41,7 @@ let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
 let coinSound = null;
+let boxSound = null;
 let isGrounded = false;
 let jumpRequested = false;
 
@@ -76,19 +77,21 @@ onMounted(() => {
   coinSound = new Audio("/sounds/coinSound.mp3");
   coinSound.volume = 0.8;
 
+  boxSound = new Audio("/sounds/box-crash.mp3");
+  boxSound.volume = 0.3;
+
   const unlockAudio = () => {
     // ??????????????????
     jumpSound.play().catch(() => {});
     bounceSound.play().catch(() => {});
     coinSound.play().catch(() => {});
+    boxSound.play().catch(() => {});
 
     jumpSound.pause();
     bounceSound.pause();
     coinSound.pause();
-
-    jumpSound.currentTime = 0;
-    bounceSound.currentTime = 0;
-    coinSound.currentTime = 0;
+    boxSound.pause();
+    // ????????????????????????????????????????
 
     window.removeEventListener("touchstart", unlockAudio);
     window.removeEventListener("click", unlockAudio);
@@ -532,6 +535,8 @@ onMounted(() => {
 
     // Remove original box
     world.removeBody(boxBody);
+    boxSound.currentTime = 0;
+    boxSound.play();
 
     const mesh = scene.children.find(
       (obj) => obj.isMesh && obj.position.distanceTo(boxBody.position) < 1.1
