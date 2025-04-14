@@ -13,6 +13,15 @@ import {
 } from "cannon-es";
 
 import { useThrottleFn } from "@vueuse/core";
+const loader = new THREE.TextureLoader();
+
+const ballMaterial = import.meta.client
+  ? new THREE.MeshStandardMaterial({
+      map: loader.load("/img/planets/Neptune.jpg"),
+    })
+  : new THREE.MeshStandardMaterial({
+      color: 0x0077ff,
+    });
 
 // import Stats from "stats.js";
 
@@ -247,6 +256,17 @@ onMounted(() => {
 
   world.addBody(sphereBody);
 
+  sphereBody.angularDamping = 0.5; // aggressively damp future rotation
+  sphereBody.angularFactor.set(0.4, 0, 0.4); // prevent all axis rotation
+
+  // Sphere mesh (Three.js)
+  const sphereMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(sphereRadius, 32, 32),
+    ballMaterial
+  );
+  sphereMesh.castShadow = true;
+  scene.add(sphereMesh);
+
   // Ground physics
   const groundBody = new Body({
     mass: 0,
@@ -255,18 +275,6 @@ onMounted(() => {
   });
   groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
   world.addBody(groundBody);
-
-  // Sphere mesh (Three.js)
-  const sphereMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(sphereRadius, 32, 32),
-    new THREE.MeshStandardMaterial({
-      color: 0x0077ff,
-      metalness: 0.8,
-      roughness: 0.4,
-    })
-  );
-  sphereMesh.castShadow = true;
-  scene.add(sphereMesh);
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
   const groundMesh = new THREE.Mesh(
@@ -650,10 +658,6 @@ onMounted(() => {
 
     if (passedThrough) {
       updateScore();
-    }
-
-    if (sphereBody.velocity.y > 50) {
-      sphereBody.velocity.y = 50;
     }
 
     // Offset relative to ball (e.g. behind and above)
