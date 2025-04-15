@@ -77,9 +77,13 @@ function resetTimer() {
   elapsedTime = 0;
   timeRecord.value = "00:00:00";
 
-  console.log(timerInterval.value);
-
   clearInterval(timerInterval.value);
+}
+
+function endTimer() {
+  score.value = timeToString(elapsedTime);
+
+  resetTimer();
 }
 
 // ========= TIMER
@@ -351,6 +355,10 @@ onMounted(() => {
         startTimer();
       }
 
+      if ([bodyA, bodyB].find((b) => b.userData?.type === "finishPlatform")) {
+        endTimer();
+      }
+
       // bounce sound logic
       const relativeVelocity = sphereBody.velocity.vsub(
         otherBody.velocity || new Vec3(0, 0, 0)
@@ -473,7 +481,13 @@ onMounted(() => {
   world.addBody(seventhPlatformBody);
   //= = = = eighth platform
   const { platformMesh: eighthPlatformMesh, platformBody: eighthPlatformBody } =
-    createPlatform({ x: 12, y: 17, z: -5, contact: bounceContact });
+    createPlatform({
+      x: 12,
+      y: 17,
+      z: -5,
+      contact: bounceContact,
+      dataType: "finishPlatform",
+    });
   scene.add(eighthPlatformMesh);
   world.addBody(eighthPlatformBody);
 
