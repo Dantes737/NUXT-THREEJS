@@ -77,8 +77,8 @@ onMounted(() => {
   coinSound = new Audio("/sounds/coinSound.mp3");
   coinSound.volume = 0.8;
 
-  boxSound = new Audio("/sounds/box-crash.mp3");
-  boxSound.volume = 0.3;
+  boxSound = new Audio("/sounds/dice-sound.mp3");
+  boxSound.volume = 0.5;
 
   const unlockAudio = () => {
     // ??????????????????
