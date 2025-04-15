@@ -170,7 +170,8 @@ onMounted(() => {
   //
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf0f0f0);
+  scene.background = new THREE.Color(0xbfe3dd);
+  scene.fog = new THREE.Fog(0xbfe3dd, 30, 80);
 
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -281,7 +282,7 @@ onMounted(() => {
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
   const groundMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(60, 60),
+    new THREE.PlaneGeometry(90, 90),
     new THREE.MeshStandardMaterial({ color: 0x4caf50 }) // green color
   );
   groundMesh.rotation.x = -Math.PI / 2;
