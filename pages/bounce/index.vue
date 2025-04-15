@@ -27,7 +27,7 @@ const ballMaterial = import.meta.client
 
 const container = ref(null);
 const canvasRef = ref(null);
-const score = ref("00:00");
+const bestTime = ref(null);
 
 const debrisBodies = [];
 const keysPressed = {};
@@ -41,6 +41,8 @@ let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
+let winSound = null;
+
 // let coinSound = null;
 let boxSound = null;
 let isGrounded = false;
@@ -87,10 +89,15 @@ function resetTimer() {
 }
 
 function endTimer() {
-  if (score.value === "00:00") {
-    score.value = timeToString(elapsedTime);
-    resetTimer();
+  if (bestTime.value) {
+    return;
   }
+
+  bestTime.value = timeToString(elapsedTime);
+  resetTimer();
+
+  winSound.currentTime = 0;
+  winSound.play();
 }
 
 // ========= TIMER
@@ -122,14 +129,19 @@ onMounted(() => {
   boxSound = new Audio("/sounds/dice-sound.mp3");
   boxSound.volume = 0.5;
 
+  winSound = new Audio("/sounds/choir-singing.mp3");
+  winSound.volume = 0.5;
+
   const unlockAudio = () => {
     // ??????????????????
     jumpSound.play().catch(() => {});
+    winSound.play().catch(() => {});
     bounceSound.play().catch(() => {});
     // coinSound.play().catch(() => {});
     boxSound.play().catch(() => {});
 
     jumpSound.pause();
+    winSound.pause();
     bounceSound.pause();
     // coinSound.pause();
     boxSound.pause();
@@ -429,7 +441,7 @@ onMounted(() => {
 
   const platformMesh = new THREE.Mesh(
     new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
-    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
+    new THREE.MeshStandardMaterial({ color: "#a3ebb1" }) // brown tone
   );
   platformMesh.position.set(-20, platformY, 3); // Adjust position as you like
   platformMesh.castShadow = true;
@@ -492,6 +504,7 @@ onMounted(() => {
       x: 12,
       y: 17,
       z: -5,
+      color: "#FFDF00",
       contact: bounceContact,
       dataType: "finishPlatform",
     });
@@ -696,7 +709,7 @@ onMounted(() => {
     <div
       class="absolute top-16 left-5 z-20 text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded"
     >
-      Best time: {{ score }}
+      Best time: {{ bestTime || "00:00" }}
     </div>
     <div
       class="absolute top-32 left-5 z-20 text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded"

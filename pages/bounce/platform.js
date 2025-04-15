@@ -3,7 +3,14 @@ import { Mesh, BoxGeometry, MeshStandardMaterial } from "three";
 import { Vec3, Body, Box } from "cannon-es";
 
 const createPlatform = (options = {}) => {
-  const { x = 0, y = 0, z = 0, contact, dataType = "" } = options;
+  const {
+    x = 0,
+    y = 0,
+    z = 0,
+    contact,
+    dataType = "",
+    color = "#86d6d8",
+  } = options;
 
   const PLATFORM_WIDTH = 6;
   const PLATFORM_HEIGH = 0.8;
@@ -11,7 +18,7 @@ const createPlatform = (options = {}) => {
 
   const platformMesh = new Mesh(
     new BoxGeometry(PLATFORM_WIDTH, PLATFORM_HEIGH, PLATFORM_DEPTH),
-    new MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
+    new MeshStandardMaterial({ color })
   );
   platformMesh.position.set(x, y, z); // Adjust position as you like
   platformMesh.castShadow = true;
