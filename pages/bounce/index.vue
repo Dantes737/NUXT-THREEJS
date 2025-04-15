@@ -66,6 +66,11 @@ function timeToString(time) {
 
 function startTimer() {
   startTime = Date.now() - elapsedTime;
+
+  if (timerInterval) {
+    return;
+  }
+
   timerInterval = setInterval(() => {
     elapsedTime = Date.now() - startTime;
     timeRecord.value = timeToString(elapsedTime);
@@ -73,19 +78,19 @@ function startTimer() {
 }
 
 function resetTimer() {
-  timeRecord.value = "00:00:00";
-
   clearInterval(timerInterval);
 
   timerInterval = null;
   startTime = 0;
   elapsedTime = 0;
+  timeRecord.value = "00:00:00";
 }
 
 function endTimer() {
-  score.value = timeToString(elapsedTime);
-
-  resetTimer();
+  if (score.value === "00:00") {
+    score.value = timeToString(elapsedTime);
+    resetTimer();
+  }
 }
 
 // ========= TIMER
@@ -349,15 +354,15 @@ onMounted(() => {
         }
       }
 
-      if ([bodyA, bodyB].find((b) => b.userData?.type === "GROUND")) {
+      if (otherBody.userData?.type === "GROUND") {
         resetTimer();
       }
 
-      if ([bodyA, bodyB].find((b) => b.userData?.type === "startTimer")) {
+      if (otherBody.userData?.type === "startTimer") {
         startTimer();
       }
 
-      if ([bodyA, bodyB].find((b) => b.userData?.type === "finishPlatform")) {
+      if (otherBody.userData?.type === "finishPlatform") {
         endTimer();
       }
 
