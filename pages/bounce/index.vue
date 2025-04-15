@@ -11,8 +11,8 @@ import {
   Material,
   ContactMaterial,
 } from "cannon-es";
+import createPlatform from "./platform";
 
-import { useThrottleFn } from "@vueuse/core";
 const loader = new THREE.TextureLoader();
 
 const ballMaterial = import.meta.client
@@ -27,23 +27,62 @@ const ballMaterial = import.meta.client
 
 const container = ref(null);
 const canvasRef = ref(null);
-const score = ref(0);
+const score = ref("00:00");
 
 const debrisBodies = [];
 const keysPressed = {};
 // joystick refs
 const joystickZone = ref(null);
 const joystick = ref(null);
+const timeRecord = ref("00:00:00");
 
 // movement direction (to be used in animate loop)
 let joystickDir = { x: 0, y: 0 };
 let isTouching = false;
 let jumpSound = null;
 let bounceSound = null;
-let coinSound = null;
+// let coinSound = null;
 let boxSound = null;
 let isGrounded = false;
 let jumpRequested = false;
+
+// ===== TIMER == = = = = = == = =
+let startTime = 0;
+let elapsedTime = 0;
+const timerInterval = ref(null);
+
+function timeToString(time) {
+  const ms = Math.floor((time % 1000) / 10)
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.floor((time / 1000) % 60)
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor((time / (1000 * 60)) % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds}:${ms}`;
+}
+
+function startTimer() {
+  startTime = Date.now() - elapsedTime;
+  timerInterval.value = setInterval(() => {
+    elapsedTime = Date.now() - startTime;
+    timeRecord.value = timeToString(elapsedTime);
+  }, 10);
+}
+
+function resetTimer() {
+  startTime = 0;
+  elapsedTime = 0;
+  timeRecord.value = "00:00:00";
+
+  console.log(timerInterval.value);
+
+  clearInterval(timerInterval.value);
+}
+
+// ========= TIMER
 
 function pressJupm() {
   jumpRequested = true;
@@ -53,14 +92,6 @@ function pressJupm() {
 function release(code) {
   keysPressed[code] = false;
 }
-
-// update player Score, it will be called at most 1 time per 1.7 second
-const updateScore = useThrottleFn(() => {
-  score.value += 1;
-
-  coinSound.currentTime = 0;
-  coinSound.play();
-}, 1700);
 
 onMounted(() => {
   // const stats = new Stats();
@@ -74,8 +105,8 @@ onMounted(() => {
   bounceSound = new Audio("/sounds/bounceSound.mp3");
   bounceSound.volume = 0.4;
 
-  coinSound = new Audio("/sounds/coinSound.mp3");
-  coinSound.volume = 0.8;
+  // coinSound = new Audio("/sounds/coinSound.mp3");
+  // coinSound.volume = 0.8;
 
   boxSound = new Audio("/sounds/dice-sound.mp3");
   boxSound.volume = 0.5;
@@ -84,12 +115,12 @@ onMounted(() => {
     // ??????????????????
     jumpSound.play().catch(() => {});
     bounceSound.play().catch(() => {});
-    coinSound.play().catch(() => {});
+    // coinSound.play().catch(() => {});
     boxSound.play().catch(() => {});
 
     jumpSound.pause();
     bounceSound.pause();
-    coinSound.pause();
+    // coinSound.pause();
     boxSound.pause();
     // ????????????????????????????????????????
 
@@ -180,7 +211,7 @@ onMounted(() => {
     1000
   );
   // Set position above and slightly behind the ball
-  // camera.position.set(0, 16, 27);
+  // camera.position.set(-15, 24, 25);
   // Look straight down (at the center of the scene)
   // camera.lookAt(0, 0, 0);
 
@@ -278,6 +309,7 @@ onMounted(() => {
     material: bounceMaterial, // ground shares bounce material
   });
   groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  groundBody.userData = { type: "GROUND" }; // for collision detection
   world.addBody(groundBody);
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
@@ -288,68 +320,6 @@ onMounted(() => {
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
-
-  // Add a ring under the ground
-  const ringRadius = 3;
-  const ringTube = 0.4;
-
-  const ringGeometry = new THREE.TorusGeometry(ringRadius, ringTube, 16, 100);
-  const ringMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffd700,
-    emissive: 0xffd700,
-    metalness: 1,
-    roughness: 0.3,
-  });
-  const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
-
-  ringMesh.rotation.y = Math.PI / 1.3;
-  ringMesh.position.set(-2, 12, -9);
-  ringMesh.castShadow = true;
-  scene.add(ringMesh);
-
-  // Create ring segments
-  const ringCenter = ringMesh.position;
-  const ringRotation = ringMesh.rotation.y;
-
-  const ringSegments = 12;
-  const segmentWidth = 1;
-  const segmentHeight = 1;
-  const segmentDepth = 0.3;
-
-  for (let i = 0; i < ringSegments; i++) {
-    const angle = (i / ringSegments) * Math.PI * 2;
-    const finalAngle = angle + ringRotation;
-
-    const x = ringRadius * Math.cos(finalAngle);
-    const y = ringRadius * Math.sin(finalAngle);
-
-    const segmentBody = new Body({
-      mass: 0,
-      shape: new Box(
-        new Vec3(segmentWidth / 2, segmentHeight / 2, segmentDepth / 2)
-      ),
-      position: new Vec3(ringCenter.x + x, ringCenter.y + y, ringCenter.z),
-      material: bounceMaterial,
-    });
-
-    // Rotate segment to face center
-    segmentBody.quaternion.setFromEuler(0, 0, -finalAngle);
-    world.addBody(segmentBody);
-
-    // Debug mesh (optional)
-    // const debugMesh = new THREE.Mesh(
-    //   new THREE.BoxGeometry(segmentWidth, segmentHeight, segmentDepth),
-    //   new THREE.MeshStandardMaterial({
-    //     color: 0x000000,
-    //     transparent: true,
-    //     opacity: 0.3,
-    //   })
-    // );
-    // debugMesh.position.set(ringCenter.x + x, ringCenter.y + y, ringCenter.z);
-    // debugMesh.rotation.z = -finalAngle;
-    // scene.add(debugMesh);
-  }
-  //
 
   world.addEventListener("beginContact", (event) => {
     const { bodyA, bodyB } = event;
@@ -371,6 +341,14 @@ onMounted(() => {
         if (Math.abs(sphereBody.velocity.y) < 30) {
           isGrounded = true;
         }
+      }
+
+      if ([bodyA, bodyB].find((b) => b.userData?.type === "GROUND")) {
+        resetTimer();
+      }
+
+      if ([bodyA, bodyB].find((b) => b.userData?.type === "startTimer")) {
+        startTimer();
       }
 
       // bounce sound logic
@@ -451,49 +429,55 @@ onMounted(() => {
     position: new Vec3(-20, platformY, 3), // same as mesh
     material: bounceContact, // solid, not bouncy
   });
+
+  platformBody.userData = { type: "startTimer" };
   world.addBody(platformBody);
 
   //= = = = second platform
-  const secondPlatformMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
-    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
-  );
-  secondPlatformMesh.position.set(-20, 5, -5); // Adjust position as you like
-  secondPlatformMesh.castShadow = true;
-  secondPlatformMesh.receiveShadow = true;
+  const { platformMesh: secondPlatformMesh, platformBody: secondPlatformBody } =
+    createPlatform({ x: -20, y: 5, z: -5, contact: bounceContact });
   scene.add(secondPlatformMesh);
-
-  const secondPlatformBody = new Body({
-    mass: 0, // static platform
-    shape: new Box(
-      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
-    ),
-    position: new Vec3(-20, 5, -5), // same as mesh
-    material: bounceContact, // solid, not bouncy
-  });
   world.addBody(secondPlatformBody);
 
   //= = = = third platform
-  const thirdPlatformMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
-    new THREE.MeshStandardMaterial({ color: "#86d6d8" }) // brown tone
-  );
-  thirdPlatformMesh.position.set(-8, 7, -5); // Adjust position as you like
-  thirdPlatformMesh.castShadow = true;
-  thirdPlatformMesh.receiveShadow = true;
+  const { platformMesh: thirdPlatformMesh, platformBody: thirdPlatformBody } =
+    createPlatform({ x: -8, y: 7, z: -5, contact: bounceContact });
   scene.add(thirdPlatformMesh);
-
-  const thirdPlatformBody = new Body({
-    mass: 0, // static platform
-    shape: new Box(
-      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
-    ),
-    position: new Vec3(-8, 7, -5), // same as mesh
-    material: bounceContact, // solid, not bouncy
-  });
   world.addBody(thirdPlatformBody);
 
-  // = = = =
+  //= = = = fourth platform
+  const { platformMesh: fourthPlatformMesh, platformBody: fourthPlatformBody } =
+    createPlatform({ x: -6, y: 9, z: 3, contact: bounceContact });
+
+  scene.add(fourthPlatformMesh);
+  world.addBody(fourthPlatformBody);
+
+  //= = = = fifth platform
+  const { platformMesh: fifthPlatformMesh, platformBody: fifthPlatformBody } =
+    createPlatform({ x: 3, y: 11, z: -3, contact: bounceContact });
+  scene.add(fifthPlatformMesh);
+  world.addBody(fifthPlatformBody);
+
+  //= = = = sixth platform
+  const { platformMesh: sixthPlatformMesh, platformBody: sixthPlatformBody } =
+    createPlatform({ x: -6, y: 13, z: -9, contact: bounceContact });
+  scene.add(sixthPlatformMesh);
+  world.addBody(sixthPlatformBody);
+
+  //= = = = seventh platform
+  const {
+    platformMesh: seventhPlatformMesh,
+    platformBody: seventhPlatformBody,
+  } = createPlatform({ x: 6, y: 15, z: -13, contact: bounceContact });
+  scene.add(seventhPlatformMesh);
+  world.addBody(seventhPlatformBody);
+  //= = = = eighth platform
+  const { platformMesh: eighthPlatformMesh, platformBody: eighthPlatformBody } =
+    createPlatform({ x: 12, y: 17, z: -5, contact: bounceContact });
+  scene.add(eighthPlatformMesh);
+  world.addBody(eighthPlatformBody);
+
+  // ============
 
   // Random Boxes Setup
   const groundZoneForBoxes = 40;
@@ -651,21 +635,6 @@ onMounted(() => {
       mesh.quaternion.copy(body.quaternion);
     });
 
-    const ringCenter = ringMesh.position;
-    const ballY = sphereBody.position.y;
-    const ballXZDist = Math.hypot(
-      sphereBody.position.x - ringCenter.x,
-      sphereBody.position.z - ringCenter.z
-    );
-
-    const passedThrough =
-      ballY < ringCenter.y - 1 && // fell below the ring
-      ballXZDist < ringRadius - ringTube * 1.2; // passed through center
-
-    if (passedThrough) {
-      updateScore();
-    }
-
     // Offset relative to ball (e.g. behind and above)
     const cameraOffset = new THREE.Vector3(0, 8, 12);
 
@@ -706,7 +675,12 @@ onMounted(() => {
     <div
       class="absolute top-16 left-5 z-20 text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded"
     >
-      Score: {{ score }}
+      Best time: {{ score }}
+    </div>
+    <div
+      class="absolute top-32 left-5 z-20 text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded"
+    >
+      Timer: {{ timeRecord }}
     </div>
 
     <!-- Virtual Joystick + Jump -->
