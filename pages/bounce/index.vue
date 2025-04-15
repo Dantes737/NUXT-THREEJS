@@ -49,7 +49,7 @@ let jumpRequested = false;
 // ===== TIMER == = = = = = == = =
 let startTime = 0;
 let elapsedTime = 0;
-const timerInterval = ref(null);
+let timerInterval = null;
 
 function timeToString(time) {
   const ms = Math.floor((time % 1000) / 10)
@@ -66,18 +66,20 @@ function timeToString(time) {
 
 function startTimer() {
   startTime = Date.now() - elapsedTime;
-  timerInterval.value = setInterval(() => {
+  timerInterval = setInterval(() => {
     elapsedTime = Date.now() - startTime;
     timeRecord.value = timeToString(elapsedTime);
   }, 10);
 }
 
 function resetTimer() {
-  startTime = 0;
-  elapsedTime = 0;
   timeRecord.value = "00:00:00";
 
-  clearInterval(timerInterval.value);
+  clearInterval(timerInterval);
+
+  timerInterval = null;
+  startTime = 0;
+  elapsedTime = 0;
 }
 
 function endTimer() {
