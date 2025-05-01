@@ -12,6 +12,7 @@ import {
   ContactMaterial,
 } from "cannon-es";
 import createPlatform from "./platform";
+import { ambientLight, directionalLight } from "./lights";
 
 const loader = new THREE.TextureLoader();
 
@@ -100,7 +101,7 @@ function endTimer() {
   winSound.play();
 }
 
-// ========= TIMER
+// ========= TIMER =====
 
 function pressJupm() {
   jumpRequested = true;
@@ -255,22 +256,7 @@ onMounted(() => {
   window.addEventListener("resize", handleResize);
 
   // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  directionalLight.position.set(15, 25, 10);
-  directionalLight.castShadow = true;
-
-  // Set up shadow properties for the light
-  directionalLight.shadow.camera.top = 30;
-  directionalLight.shadow.camera.bottom = -30;
-  directionalLight.shadow.camera.left = -30;
-  directionalLight.shadow.camera.right = 30;
-  directionalLight.shadow.camera.near = 0.5;
-  directionalLight.shadow.camera.far = 100;
-  directionalLight.shadow.mapSize.set(2048, 2048);
-
   scene.add(directionalLight);
 
   // Cannon.js setup
@@ -434,31 +420,19 @@ onMounted(() => {
   window.addEventListener("keyup", handleKeyUp);
 
   // Platform visual (Three.js)
-  const platformWidth = 6;
-  const platformHeight = 0.8;
-  const platformDepth = 6;
-  const platformY = 2; // Height from ground
+  // = = = = first platform
+  const { platformMesh: firstPlatformMesh, platformBody: firstPlatformBody } =
+    createPlatform({
+      x: -20,
+      y: 2,
+      z: 3,
+      color: "#a3ebb1",
+      contact: bounceContact,
+      dataType: "startTimer",
+    });
 
-  const platformMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(platformWidth, platformHeight, platformDepth),
-    new THREE.MeshStandardMaterial({ color: "#a3ebb1" }) // brown tone
-  );
-  platformMesh.position.set(-20, platformY, 3); // Adjust position as you like
-  platformMesh.castShadow = true;
-  platformMesh.receiveShadow = true;
-  scene.add(platformMesh);
-
-  const platformBody = new Body({
-    mass: 0, // static platform
-    shape: new Box(
-      new Vec3(platformWidth / 2, platformHeight / 2, platformDepth / 2)
-    ),
-    position: new Vec3(-20, platformY, 3), // same as mesh
-    material: bounceContact, // solid, not bouncy
-  });
-
-  platformBody.userData = { type: "startTimer" };
-  world.addBody(platformBody);
+  scene.add(firstPlatformMesh);
+  world.addBody(firstPlatformBody);
 
   //= = = = second platform
   const { platformMesh: secondPlatformMesh, platformBody: secondPlatformBody } =
@@ -638,7 +612,9 @@ onMounted(() => {
         sphereBody.velocity.y = 8;
         jumpSound.currentTime = 0;
         jumpSound.play();
+
         isGrounded = false; // avoid double jump in same frame
+        jumpRequested = true;
       }
       jumpRequested = true;
       keysPressed["Space"] = false; // trigger only once per tap
