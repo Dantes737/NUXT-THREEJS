@@ -323,7 +323,7 @@ onMounted(() => {
 
   // Ground mesh (Three.js) - Correctly colored and receives shadows
   const groundMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(90, 90),
+    new THREE.PlaneGeometry(140, 140),
     new THREE.MeshStandardMaterial({ color: 0x4caf50 }) // green color
   );
   groundMesh.rotation.x = -Math.PI / 2;
