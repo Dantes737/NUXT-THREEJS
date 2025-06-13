@@ -133,28 +133,6 @@ onMounted(() => {
   winSound = new Audio("/sounds/choir-singing.mp3");
   winSound.volume = 0.5;
 
-  const unlockAudio = () => {
-    // ??????????????????
-    jumpSound.play().catch(() => {});
-    winSound.play().catch(() => {});
-    bounceSound.play().catch(() => {});
-    // coinSound.play().catch(() => {});
-    boxSound.play().catch(() => {});
-
-    jumpSound.pause();
-    winSound.pause();
-    bounceSound.pause();
-    // coinSound.pause();
-    boxSound.pause();
-    // ????????????????????????????????????????
-
-    window.removeEventListener("touchstart", unlockAudio);
-    window.removeEventListener("click", unlockAudio);
-  };
-
-  window.addEventListener("touchstart", unlockAudio, { once: true });
-  window.addEventListener("click", unlockAudio, { once: true });
-
   // Joystick setup
   const zone = joystickZone.value;
   const stick = joystick.value;
