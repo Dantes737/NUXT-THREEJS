@@ -10,7 +10,7 @@ const navigation = [
 </script>
 
 <template>
-  <div class="bg-gray-900 h-screen overflow-scroll">
+  <div class="bg-gray-900 h-screen overflow-hidden">
     <header class="bg-indigo-950/90 sticky top-0 z-50">
       <nav
         class="mx-auto flex flex-row max-w-7xl items-center gap-10 px-4 py-3 lg:px-6"
